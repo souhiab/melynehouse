@@ -13,7 +13,7 @@ Scope: local development only; the live MELYNE website, domain, and Google Sheet
 
 ## Real PostgreSQL acceptance
 
-PostgreSQL 17.11 was installed from the EDB-certified Windows installer linked by the official PostgreSQL Windows download page. The local Windows service is `postgresql-x64-17-melyne`, listening only through the local development connection configured in the ignored `.env`. The acceptance database is `melyne_dev`, owned by the dedicated `melyne_app` role.
+PostgreSQL 17.11 was installed from the EDB-certified Windows installer linked by the official PostgreSQL Windows download page. The local Windows service is `postgresql-x64-17-melyne`; `listen_addresses` is restricted to localhost. The acceptance database is `melyne_dev`, owned by the dedicated `melyne_app` role.
 
 Commands executed:
 

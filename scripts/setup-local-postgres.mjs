@@ -36,6 +36,7 @@ try {
   await client.query("REVOKE ALL ON DATABASE melyne_dev FROM PUBLIC");
   await client.query("GRANT CONNECT,TEMPORARY ON DATABASE melyne_dev TO melyne_app");
   await client.query("ALTER DATABASE melyne_dev SET timezone TO 'Africa/Casablanca'");
+  await client.query("ALTER SYSTEM SET listen_addresses TO 'localhost'");
   console.log(`Local PostgreSQL database ${databaseName} and least-privilege role melyne_app are ready on ${target.hostname}:${target.port || 5432}.`);
 } finally {
   await client.end();
