@@ -28,8 +28,9 @@ With PostgreSQL 16+ available, create a dedicated role and database (choose a un
 
 ```sql
 CREATE ROLE melyne_app LOGIN PASSWORD '<strong generated password>';
-CREATE DATABASE melyne OWNER melyne_app ENCODING 'UTF8';
-REVOKE ALL ON DATABASE melyne FROM PUBLIC;
+CREATE DATABASE melyne_dev OWNER melyne_app ENCODING 'UTF8';
+REVOKE ALL ON DATABASE melyne_dev FROM PUBLIC;
+GRANT CONNECT, TEMPORARY ON DATABASE melyne_dev TO melyne_app;
 ```
 
 For a local/staging database with Docker available, the included database-only Compose file creates a named persistent volume and binds PostgreSQL to localhost:
