@@ -64,6 +64,7 @@ Results from the actual PostgreSQL server:
 
 - The first post-workflow `db:verify` run assumed exactly one banner and reported `seeded banner` after the acceptance workflow correctly created a second draft banner. The verifier was corrected to locate and validate the seeded banner by its stable ID while allowing owner-created banners. The rerun passed with two banners and no failures.
 - Git was initially not resolvable through the automation process PATH. Git for Windows was made available, and the repository was initialized using its explicit executable path.
+- One local HTTP smoke-test command used PowerShell's reserved `$HOME` variable name and produced a shell error without changing application state. It was rerun with `$homeStatus`; `/`, `/owner`, and the proxied storefront API returned HTTP 200 with 34 public products, eight featured products, and one published banner.
 
 ## Remaining limitation
 
