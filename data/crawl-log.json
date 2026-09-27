@@ -1,0 +1,348 @@
+{
+  "extractedAt": "2026-09-26T01:08:38.540Z",
+  "robotsText": "#Storeino is our ecommerce business platform\nUser-agent: *\nAllow: /",
+  "visited": [
+    {
+      "url": "https://melynehouse.com/robots.txt",
+      "label": "robots",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/sitemap.xml",
+      "label": "sitemap-index",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/sitemap_products.xml",
+      "label": "sitemap",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/sitemap_pages.xml",
+      "label": "sitemap",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/sitemap_posts.xml",
+      "label": "sitemap",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/sitemap_collections.xml",
+      "label": "sitemap",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/",
+      "label": "homepage",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/shop",
+      "label": "catalog-page",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=1&limit=12&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=2&limit=12&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=3&limit=12&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/shop/ملابس-رجالية",
+      "label": "category-page",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=1&limit=12&collections.slug-in=%D9%85%D9%84%D8%A7%D8%A8%D8%B3-%D8%B1%D8%AC%D8%A7%D9%84%D9%8A%D8%A9&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/shop/women",
+      "label": "category-page",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=1&limit=12&collections.slug-in=women&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/shop/kids",
+      "label": "category-page",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=1&limit=12&collections.slug-in=kids&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=2&limit=12&collections.slug-in=kids&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://api-stores.storeino.com/api/products/search?page=3&limit=12&collections.slug-in=kids&sort%5BcreatedAt%5D=-1",
+      "label": "catalog-api",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-2026--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B1%D8%A8%D9%8A%D8%B9-%D9%88-%D8%A7%D9%84%D8%B5%D9%8A%D9%81---1780442411730",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B1%D8%A8%D9%8A%D8%B9-%D9%88-%D8%A7%D9%84%D8%B5%D9%8A%D9%81---",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85--%D9%84%D9%84%D8%B1%D8%AC%D8%A7%D9%84-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B1%D8%A8%D9%8A%D8%B9-%D9%88-%D8%A7%D9%84%D8%B5%D9%8A%D9%81--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B1%D8%A8%D9%8A%D8%B9-%D9%88-%D8%A7%D9%84%D8%B5%D9%8A%D9%81---copy",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/-----%D8%B7%D9%82%D9%85-%D9%85%D9%86-3-%D9%82%D8%B7%D8%B9-%D9%84%D9%84%D9%86%D8%B3%D8%A7%D8%A1-%D9%85%D9%88%D8%B6%D8%A9-2026------",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D9%86%D8%B3%D8%A7%D8%A1-%D9%85%D9%88%D8%B6%D8%A9-2026---",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%AB%D9%84%D8%A7%D8%AB-%D9%82%D8%B7%D8%B9-%D9%85%D9%86-%D8%A7%D9%84%D9%81%D8%AE%D8%A7%D9%85%D8%A9--%D8%B7%D9%82%D9%85-%D8%A7%D9%84%D8%AC%D9%84%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%AA%D9%8A-%D8%A7%D9%84%D8%AC%D8%AF%D9%8A%D8%AF---",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1---1767362962364",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%AC%D8%A7%D9%83%D9%8A%D8%B7-%D9%84%D9%84%D8%B1%D8%AC%D8%A7%D9%84---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1---1765376406328",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A7%D9%88%D9%84%D8%A7%D8%AF---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1---1762271578020",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D9%85%D8%B9%D8%B7%D9%81-%D9%84%D9%84%D8%A7%D9%88%D9%84%D8%A7%D8%AF---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D9%85%D8%B9%D8%B7%D9%81-%D9%84%D9%84%D8%B1%D8%AC%D8%A7%D9%84---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1---1761823367258",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1---1760382150316",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A7%D9%88%D9%84%D8%A7%D8%AF---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1----1759353269166",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/----%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1----",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/------%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1------",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA--%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1----1758499016921",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/----%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A7%D9%88%D9%84%D8%A7%D8%AF---%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1----",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1----1756418623730",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/----%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B5%D9%8A%D9%81-2025------",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B1%D8%A8%D9%8A%D8%B9-%D9%88%D8%A7%D9%84%D8%B5%D9%8A%D9%81-2025---1745968390275",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D9%86%D8%B3%D8%A7%D9%8A-%D9%8A-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B5%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-2025--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B1%D8%A8%D9%8A%D8%B9-%D9%88%D8%A7%D9%84%D8%B5%D9%8A%D9%81-2025--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-2025----1740788541229",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/--%D8%B7%D9%82%D9%85-%D8%A7%D9%84%D8%A7-%D9%88%D9%84%D8%A7%D8%AF-king-%D9%85%D9%88%D8%B6%D8%A9-2025--",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/---%D9%81%D8%B3%D8%AA%D8%A7%D9%86-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-2025---",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/-%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A7%D8%B7%D9%81%D8%A7%D9%84-%D9%85%D9%88%D8%B6%D9%87-%D8%A7%D9%84%D8%B4%D8%AA%D8%A7%D8%A1-",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/----%D8%B7%D9%82%D9%85-%D8%B4%D8%A7%D9%86%D9%8A%D9%84-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-2024------",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/-----%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A7-%D9%88%D9%84%D8%A7%D8%AF-%D9%85%D9%88%D8%B6%D8%A92024----",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/%D8%B7%D9%82%D9%85-%D9%86%D8%B3%D8%A7%D9%8A-%D9%8A-%D9%85%D9%88%D8%B6%D8%A9-%D8%A7%D9%84%D8%B5%D9%8A%D9%81-%D9%88-%D8%A7%D9%84%D8%AE%D8%B1%D9%8A%D9%81-2024",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/melyne-%D8%B7%D9%82%D9%85--%D8%A8%D8%AF%D9%88%D9%86-%D8%A7-%D9%83%D9%85%D8%A7%D9%85-%D9%85%D8%B9-%D8%AD%D8%B2%D8%A7%D9%85-%D9%88%D8%AA%D9%86%D9%88%D8%B1%D8%A9-%D9%85%D8%B7%D9%88%D9%8A%D8%A9",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/products/%D8%B7%D9%82%D9%85-%D9%85%D9%83%D9%88%D9%86-%D9%85%D9%86-3-%D9%82%D8%B7%D8%B9-%D9%84%D9%84%D8%A7-%D9%88%D9%84%D8%A7%D8%AF-%D8%A7%D9%84%D8%B5%D8%BA%D8%A7%D8%B1-1717329393208",
+      "label": "product-detail",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/pages/اتصل-بنا",
+      "label": "policy-page",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/pages/سياسة-الا-ستبدال",
+      "label": "policy-page",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/pages/سياسة-الدفع-والا-من",
+      "label": "policy-page",
+      "status": 200
+    },
+    {
+      "url": "https://melynehouse.com/pages/سياسة-الخصوصية",
+      "label": "policy-page",
+      "status": 200
+    }
+  ],
+  "failedPages": [],
+  "failedImages": [],
+  "catalogDataPages": [
+    {
+      "page": 1,
+      "count": 12,
+      "total": 34
+    },
+    {
+      "page": 2,
+      "count": 12,
+      "total": 34
+    },
+    {
+      "page": 3,
+      "count": 10,
+      "total": 34
+    }
+  ],
+  "categoryDataPages": [
+    {
+      "slug": "ملابس-رجالية",
+      "page": 1,
+      "count": 3,
+      "total": 3,
+      "htmlCount": 3
+    },
+    {
+      "slug": "women",
+      "page": 1,
+      "count": 4,
+      "total": 4,
+      "htmlCount": 4
+    },
+    {
+      "slug": "kids",
+      "page": 1,
+      "count": 12,
+      "total": 27,
+      "htmlCount": 12
+    },
+    {
+      "slug": "kids",
+      "page": 2,
+      "count": 12,
+      "total": 27,
+      "htmlCount": null
+    },
+    {
+      "slug": "kids",
+      "page": 3,
+      "count": 3,
+      "total": 27,
+      "htmlCount": null
+    }
+  ],
+  "duplicates": []
+}

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+var/
+var/uploads/
+var/backups/
+var/postgres/
+coverage/
+npm-debug.log*
+

@@ -1,0 +1,1094 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-26T22:15:26.889Z",
+  "sourcePath": "data/products.json",
+  "sourceSha256": "35565ab888a11acbbdae28a32fbeb645e665d3e028e400edc1e6efb2d2e964b4",
+  "productCount": 34,
+  "variantCount": 468,
+  "imageCount": 207,
+  "productOrder": [
+    {
+      "position": 1,
+      "productId": "6a79f04e611b82f31a25e8ff",
+      "displayName": "طقم للبنات – موضة 2026",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6aaafe1bcca2a8dcf4f801ef",
+        "6aaafe1bcca2a8dcf4f801f1",
+        "6aaafe1bcca2a8dcf4f801f3",
+        "6aaafe1bcca2a8dcf4f801f5",
+        "6aaafe1bcca2a8dcf4f801f7",
+        "6aaafe1bcca2a8dcf4f801f8",
+        "6aaafe1bcca2a8dcf4f801f9",
+        "6aaafe1bcca2a8dcf4f801fa",
+        "6aaafe1bcca2a8dcf4f801fb",
+        "6aaafe1bcca2a8dcf4f801fc",
+        "6aaafe1bcca2a8dcf4f801fd",
+        "6aaafe1bcca2a8dcf4f801fe",
+        "6aaafe1bcca2a8dcf4f801ff",
+        "6aaafe1bcca2a8dcf4f80200",
+        "6aaafe1bcca2a8dcf4f80201"
+      ],
+      "orderedImageIds": [
+        "6a79cec757444ec61e50b66d",
+        "6a79cec857444ec61e50b672",
+        "6a79cec83a6d24f182d093c4"
+      ]
+    },
+    {
+      "position": 2,
+      "productId": "6a1f652be04bae36c406fd0d",
+      "displayName": "طقم للبنات – موضة الربيع و الصيف",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6a46b542d9d057c78145d4fc",
+        "6a46b542d9d057c78145d4fe",
+        "6a46b542d9d057c78145d500",
+        "6a46b542d9d057c78145d502",
+        "6a46b542d9d057c78145d504",
+        "6a46b542d9d057c78145d506",
+        "6a46b542d9d057c78145d507",
+        "6a46b542d9d057c78145d508",
+        "6a46b542d9d057c78145d509",
+        "6a46b542d9d057c78145d50a"
+      ],
+      "orderedImageIds": [
+        "6a1f63ffbc3af0f60d9600a9",
+        "6a1f63febc3af0f60d9600a4",
+        "6a1f63ffbc3af0f60d9600a6",
+        "6a1f63ffe04bae36c406fbc5",
+        "6a1f63ffe04bae36c406fbc6",
+        "6a1f63ffbc3af0f60d9600aa"
+      ]
+    },
+    {
+      "position": 3,
+      "productId": "69f7b9f9b4b7ad72fc170679",
+      "displayName": "فستان للبنات – موضة الربيع و الصيف",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6a372cc6e25f470ea0f26935",
+        "6a372cc6e25f470ea0f26937",
+        "6a372cc6e25f470ea0f26939",
+        "6a372cc6e25f470ea0f2693b",
+        "6a372cc6e25f470ea0f2693d",
+        "6a372cc6e25f470ea0f2693f",
+        "6a372cc6e25f470ea0f26940",
+        "6a372cc6e25f470ea0f26941",
+        "6a372cc6e25f470ea0f26942",
+        "6a372cc6e25f470ea0f26943",
+        "6a372cc6e25f470ea0f26945",
+        "6a372cc6e25f470ea0f26946",
+        "6a372cc6e25f470ea0f26947",
+        "6a372cc6e25f470ea0f26948",
+        "6a372cc6e25f470ea0f26949"
+      ],
+      "orderedImageIds": [
+        "69f7b929d5506f61cfc882e3",
+        "69f7b91ed5506f61cfc882e0",
+        "6a372bca2580c67074eebf89",
+        "69f7b92ab4b7ad72fc170628"
+      ]
+    },
+    {
+      "position": 4,
+      "productId": "69f08e4b2f12c40503544672",
+      "displayName": "طقم للرجال موضة الربيع و الصيف",
+      "categorySlugs": [
+        "ملابس-رجالية"
+      ],
+      "variantIds": [
+        "69f3cfced5506f61cfbed6b9",
+        "69f3cfced5506f61cfbed6ba",
+        "69f3cfced5506f61cfbed6bb",
+        "69f3cfced5506f61cfbed6bc",
+        "69f3cfced5506f61cfbed6bd",
+        "69f3cfced5506f61cfbed6be",
+        "69f3cfced5506f61cfbed6c0",
+        "69f3cfced5506f61cfbed6c1",
+        "69f3cfced5506f61cfbed6c2",
+        "69f3cfced5506f61cfbed6c3",
+        "69f3cfced5506f61cfbed6c4",
+        "69f3cfced5506f61cfbed6c5",
+        "69f3cfced5506f61cfbed6c7",
+        "69f3cfced5506f61cfbed6c8",
+        "69f3cfced5506f61cfbed6c9",
+        "69f3cfced5506f61cfbed6ca",
+        "69f3cfced5506f61cfbed6cb",
+        "69f3cfced5506f61cfbed6cc"
+      ],
+      "orderedImageIds": [
+        "69f3cf57d5506f61cfbed643",
+        "69f3cf58b4b7ad72fc0c1bef",
+        "69f3cf58b4b7ad72fc0c1bf0"
+      ]
+    },
+    {
+      "position": 5,
+      "productId": "69ef8007b8be6ce28c641b5c",
+      "displayName": "طقم للبنات – موضة الربيع و الصيف",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6a746dc8297cb708bb16db0c",
+        "6a746dc8297cb708bb16db0e",
+        "6a746dc8297cb708bb16db10",
+        "6a746dc8297cb708bb16db12",
+        "6a746dc8297cb708bb16db14",
+        "6a746dc8297cb708bb16db15",
+        "6a746dc8297cb708bb16db16",
+        "6a746dc8297cb708bb16db17",
+        "6a746dc8297cb708bb16db18",
+        "6a746dc8297cb708bb16db19",
+        "6a746dc8297cb708bb16db1a",
+        "6a746dc8297cb708bb16db1b",
+        "6a746dc8297cb708bb16db1c",
+        "6a746dc8297cb708bb16db1d",
+        "6a746dc8297cb708bb16db1e"
+      ],
+      "orderedImageIds": [
+        "6a261254e04bae36c4276d00",
+        "6a261254bc3af0f60dbe4ca1",
+        "6a746e7c297cb708bb16dccf"
+      ]
+    },
+    {
+      "position": 6,
+      "productId": "69ce3bf4e4696dec2571ce9f",
+      "displayName": "طقم للنساء موضة 2026",
+      "categorySlugs": [
+        "women"
+      ],
+      "variantIds": [
+        "69ce3bf4e4696dec2571cea7",
+        "69ce3bf4e4696dec2571cea9",
+        "69ce3bf4e4696dec2571ceab",
+        "69ce3bf4e4696dec2571cead",
+        "69ce3bf4e4696dec2571ceaf",
+        "69ce3bf4e4696dec2571ceb1",
+        "69ce3bf4e4696dec2571ceb2",
+        "69ce3bf4e4696dec2571ceb3",
+        "69ce3bf4e4696dec2571ceb4",
+        "69ce3bf4e4696dec2571ceb5",
+        "69ce3bf4e4696dec2571ceb7",
+        "69ce3bf4e4696dec2571ceb8",
+        "69ce3bf4e4696dec2571ceb9",
+        "69ce3bf4e4696dec2571ceba",
+        "69ce3bf4e4696dec2571cebb"
+      ],
+      "orderedImageIds": [
+        "69ce3adf49d68e02587288e9",
+        "69ce3adfe4696dec2571cd2b",
+        "69ce3adfe4696dec2571cd2c"
+      ]
+    },
+    {
+      "position": 7,
+      "productId": "69bff1a26cde090012894c92",
+      "displayName": "طقم مكون من 3 قطع للنساء موضة 2026",
+      "categorySlugs": [
+        "women"
+      ],
+      "variantIds": [
+        "69bff1a26cde090012894c9a",
+        "69bff1a26cde090012894c9c",
+        "69bff1a26cde090012894c9e",
+        "69bff1a26cde090012894ca0",
+        "69bff1a26cde090012894ca2",
+        "69bff1a26cde090012894ca4",
+        "69fbbfc4d5506f61cfd9fd1b",
+        "69fbbfc4d5506f61cfd9fd1c",
+        "69fbbfc4d5506f61cfd9fd1d",
+        "69fbbfc4d5506f61cfd9fd1e",
+        "69fbbfc4d5506f61cfd9fd1f",
+        "69fbbfc4d5506f61cfd9fd20",
+        "69ff4950fccae69044ae9dd2",
+        "69ff4950fccae69044ae9dd3",
+        "69ff4950fccae69044ae9dd4",
+        "69ff4950fccae69044ae9dd5",
+        "69ff4950fccae69044ae9dd6",
+        "69ff4950fccae69044ae9dd7"
+      ],
+      "orderedImageIds": [
+        "69bff00e9837497a3eef8968",
+        "69fbbfd1b4b7ad72fc27364c",
+        "69ff492dfccae69044ae9d95"
+      ]
+    },
+    {
+      "position": 8,
+      "productId": "69a8cd0e9837497a3eb3ffe5",
+      "displayName": "اربع قطع من الفخامة: طقم الجلد البناتي الجديد",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "69b55c456cde0900127c7434",
+        "69b55c456cde0900127c7436",
+        "69b55c456cde0900127c7438",
+        "69b55c456cde0900127c743a",
+        "69b55c456cde0900127c743c",
+        "69b55c456cde0900127c743e",
+        "69b55c456cde0900127c7440",
+        "69b55c456cde0900127c7442",
+        "69b55c456cde0900127c7443",
+        "69b55c456cde0900127c7444",
+        "69b55c456cde0900127c7445",
+        "69b55c456cde0900127c7446",
+        "69b55c456cde0900127c7447",
+        "69b55c456cde0900127c7448"
+      ],
+      "orderedImageIds": [
+        "69a8cbe76cde09001255082b",
+        "69a8cbe89837497a3eb3fca1"
+      ]
+    },
+    {
+      "position": 9,
+      "productId": "6957d192068560f4d44566cb",
+      "displayName": "طقم 3 قطع للبنات – موضة الشتاء و الربيع",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "69a237fe9837497a3e9e777d",
+        "69a237fe9837497a3e9e777f",
+        "69a237fe9837497a3e9e7781",
+        "69a237fe9837497a3e9e7783",
+        "69a237fe9837497a3e9e7785"
+      ],
+      "orderedImageIds": [
+        "69a676026cde0900124c2123",
+        "69a62c899837497a3eab1ae4",
+        "69a676036cde0900124c2125",
+        "69a63c599837497a3eab3220",
+        "69a676036cde0900124c2127"
+      ]
+    },
+    {
+      "position": 10,
+      "productId": "69398196c1ddd00012d8a57e",
+      "displayName": "جيلي + سويت للرجال – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "ملابس-رجالية"
+      ],
+      "variantIds": [
+        "693982d8057e340012ff6806",
+        "693982d8057e340012ff6808",
+        "693982d8057e340012ff680a",
+        "693982d8057e340012ff680c",
+        "693982d8057e340012ff680e",
+        "693982d8057e340012ff6810",
+        "693982d8057e340012ff6817",
+        "693982d8057e340012ff6818",
+        "693982d8057e340012ff6819",
+        "693982d8057e340012ff681a",
+        "693982d8057e340012ff681b",
+        "693982d8057e340012ff681c"
+      ],
+      "orderedImageIds": [
+        "693981034648360013118c38",
+        "69398103057e340012ff65ba",
+        "69398102057e340012ff65b9",
+        "693980e7c1ddd00012d8a508",
+        "693980fb057e340012ff65b5",
+        "693980f1057e340012ff65ac",
+        "693980e74648360013118c2b",
+        "693980fb057e340012ff65b3",
+        "693980f1057e340012ff65ad",
+        "693980e7c1ddd00012d8a509",
+        "693980fbc1ddd00012d8a51d",
+        "693980f2c1ddd00012d8a51b"
+      ]
+    },
+    {
+      "position": 11,
+      "productId": "690a215a182ebc0562141e79",
+      "displayName": "طقم للاولاد – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "694341e6bd41660013660a28",
+        "694341e6bd41660013660a2a",
+        "694341e6bd41660013660a2c",
+        "694341e6bd41660013660a2e",
+        "694341e6bd41660013660a30",
+        "694341e6bd41660013660a32",
+        "694341e6bd41660013660a33",
+        "694341e6bd41660013660a34",
+        "694341e6bd41660013660a35",
+        "694341e6bd41660013660a36",
+        "694341e6bd41660013660a37",
+        "694341e6bd41660013660a38",
+        "694341e6bd41660013660a39",
+        "694341e6bd41660013660a3a",
+        "694341e6bd41660013660a3b",
+        "694341e6bd41660013660a3c",
+        "694341e6bd41660013660a3d",
+        "694341e6bd41660013660a3e"
+      ],
+      "orderedImageIds": [
+        "690a1fd34a2c09014cd1bf7c",
+        "690a6a254a2c09014cd1fd15",
+        "690a6b4e4a2c09014cd1fd83",
+        "690a201c4a2c09014cd1bf9f",
+        "690a6a9c182ebc0562146770",
+        "690a6a5e182ebc0562146746",
+        "690a20304a2c09014cd1bfa8",
+        "690a6b1c38740c0134d864c6",
+        "690a6adb4a2c09014cd1fd52",
+        "69434357bd41660013660ab9"
+      ]
+    },
+    {
+      "position": 12,
+      "productId": "6904f0494a2c09014cc5d48a",
+      "displayName": "طقم للاولاد والبنات – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "69734934cb31024f0f6bbe16",
+        "69734934cb31024f0f6bbe18",
+        "69734934cb31024f0f6bbe1a",
+        "69734934cb31024f0f6bbe1c",
+        "69734934cb31024f0f6bbe1e",
+        "69734934cb31024f0f6bbe20",
+        "69734934cb31024f0f6bbe22",
+        "69734934cb31024f0f6bbe23",
+        "69734934cb31024f0f6bbe24",
+        "69734934cb31024f0f6bbe25",
+        "69734934cb31024f0f6bbe26",
+        "69734934cb31024f0f6bbe27"
+      ],
+      "orderedImageIds": [
+        "6904ee6a38740c0134cf12f8",
+        "6904ee9438740c0134cf130d",
+        "6904eed34a2c09014cc5d3d7",
+        "6904ef0e4a2c09014cc5d3e9",
+        "6973493fcb31024f0f6bbe3d",
+        "6973493f2d7f00e479d3d429"
+      ]
+    },
+    {
+      "position": 13,
+      "productId": "69034a874a2c09014cbd88a4",
+      "displayName": "جاكيط للرجال – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "ملابس-رجالية"
+      ],
+      "variantIds": [
+        "696047b0cb31024f0f3809ac",
+        "696047b0cb31024f0f3809ae",
+        "696047b0cb31024f0f3809b0",
+        "696047b0cb31024f0f3809b2",
+        "696047b0cb31024f0f3809b4",
+        "696047b0cb31024f0f3809b6",
+        "696047b0cb31024f0f3809b8",
+        "696047b0cb31024f0f3809b9",
+        "696047b0cb31024f0f3809ba",
+        "696047b0cb31024f0f3809bb",
+        "696047b0cb31024f0f3809bc",
+        "696047b0cb31024f0f3809bd"
+      ],
+      "orderedImageIds": [
+        "69034a3f182ebc0562fef79f",
+        "69034a254a2c09014cbd8635",
+        "69034a3b182ebc0562fef79b",
+        "69034a2938740c0134c8dc20",
+        "69034a3f4a2c09014cbd8724",
+        "69034a2838740c0134c8dc1e",
+        "696048032d7f00e4799b9500",
+        "69604803dab740edd97e77de"
+      ]
+    },
+    {
+      "position": 14,
+      "productId": "68ed4cc638740c013472c49b",
+      "displayName": "طقم للبنات – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6910b102b3806dec509976fa",
+        "6910b102b3806dec509976fc",
+        "6910b102b3806dec509976fe",
+        "6910b102b3806dec50997700",
+        "6910b102b3806dec50997702",
+        "6910b102b3806dec50997703",
+        "6910b102b3806dec50997704",
+        "6910b102b3806dec50997705",
+        "6910b102b3806dec50997706",
+        "6910b102b3806dec50997707",
+        "6910b102b3806dec50997708",
+        "6910b102b3806dec50997709",
+        "6910b102b3806dec5099770a",
+        "6910b102b3806dec5099770b",
+        "6910b102b3806dec5099770c"
+      ],
+      "orderedImageIds": [
+        "6914f2fb98b15010bb1d3235",
+        "68ed4cae182ebc05629e66da",
+        "68ed4ca94a2c09014c5ae0e9",
+        "6910b09f182ebc05622278b7",
+        "6910b09f182ebc05622278b6"
+      ]
+    },
+    {
+      "position": 15,
+      "productId": "68e674b138740c0134653d82",
+      "displayName": "طقم للبنات – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6919b1ed968f43c95969ded3",
+        "6919b1ed968f43c95969ded5",
+        "6919b1ed968f43c95969ded7",
+        "6919b1ed968f43c95969ded9",
+        "6919b1ed968f43c95969dedb",
+        "6919b1ed968f43c95969dedd",
+        "6919b1ed968f43c95969dede",
+        "6919b1ed968f43c95969dedf",
+        "6919b1ed968f43c95969dee0",
+        "6919b1ed968f43c95969dee1"
+      ],
+      "orderedImageIds": [
+        "68e8374b4a2c09014c5196c8",
+        "68e8374a38740c01346a8f53",
+        "68e837394a2c09014c5196c2",
+        "68e8373a38740c01346a8f4f",
+        "68e83742182ebc05628efdee",
+        "68e837434a2c09014c5196c4",
+        "68e837434a2c09014c5196c6",
+        "68e83747182ebc05628efdf0",
+        "68e8374b182ebc05628efdf2",
+        "6919b1fa182ebc0562450055",
+        "6919b1fbf1df23f03f8983a2"
+      ]
+    },
+    {
+      "position": 16,
+      "productId": "68dd99b54a2c09014c30b7a2",
+      "displayName": "طقم للاولاد – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "692ac1aac1ddd00012cb6658",
+        "692ac1aac1ddd00012cb665a",
+        "692ac1aac1ddd00012cb665c",
+        "692ac1aac1ddd00012cb665e",
+        "692ac1aac1ddd00012cb6660",
+        "692ac1aac1ddd00012cb6661",
+        "692ac1aac1ddd00012cb6662",
+        "692ac1aac1ddd00012cb6663",
+        "692ac1aac1ddd00012cb6665",
+        "692ac1aac1ddd00012cb6666",
+        "692ac1aac1ddd00012cb6667",
+        "692ac1aac1ddd00012cb6668"
+      ],
+      "orderedImageIds": [
+        "68def63b4a2c09014c3292ac",
+        "68def63b182ebc05627a851c",
+        "68def63f38740c0134511778",
+        "68def63f182ebc05627a851f",
+        "68def63f4a2c09014c3292af",
+        "68def6404a2c09014c3292b0",
+        "692abe764648360013030156",
+        "692ac1d9c1ddd00012cb6693",
+        "692ac21cc1ddd00012cb66be"
+      ]
+    },
+    {
+      "position": 17,
+      "productId": "68da8383182ebc0562618459",
+      "displayName": "طقم للبنات – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "68f4c82a4a2c09014c8acd60",
+        "68f4c82a4a2c09014c8acd62",
+        "68f4c82a4a2c09014c8acd64",
+        "68f4c82a4a2c09014c8acd66",
+        "68f4c82a4a2c09014c8acd68",
+        "68f4c82a4a2c09014c8acd6a",
+        "68f4c82a4a2c09014c8acd6b",
+        "68f4c82a4a2c09014c8acd6c",
+        "68f4c82a4a2c09014c8acd6d",
+        "68f4c82a4a2c09014c8acd6e",
+        "68f4c82a4a2c09014c8acd70",
+        "68f4c82a4a2c09014c8acd71",
+        "68f4c82a4a2c09014c8acd72",
+        "68f4c82a4a2c09014c8acd73",
+        "68f4c82a4a2c09014c8acd74"
+      ],
+      "orderedImageIds": [
+        "690127c14a2c09014cb6d844",
+        "690127c5182ebc0562f54d8e",
+        "690127c84a2c09014cb6d846"
+      ]
+    },
+    {
+      "position": 18,
+      "productId": "68d728924a2c09014c115b19",
+      "displayName": "طقم للبنات – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "692798bf5e7f2f5dade61682",
+        "692798bf5e7f2f5dade61684",
+        "692798bf5e7f2f5dade61686",
+        "692798bf5e7f2f5dade61688",
+        "692798bf5e7f2f5dade6168a",
+        "692798bf5e7f2f5dade6168c",
+        "692798bf5e7f2f5dade6168d",
+        "692798bf5e7f2f5dade6168e",
+        "692798bf5e7f2f5dade6168f",
+        "692798bf5e7f2f5dade61690",
+        "692798bf5e7f2f5dade61692",
+        "692798bf5e7f2f5dade61693",
+        "692798bf5e7f2f5dade61694",
+        "692798bf5e7f2f5dade61695",
+        "692798bf5e7f2f5dade61696"
+      ],
+      "orderedImageIds": [
+        "68d7282938740c01342bd0ff",
+        "69260f9aa2cc498c7f380931",
+        "68d7282938740c01342bd101",
+        "68d7282238740c01342bd0fc",
+        "68d728274a2c09014c115b0e",
+        "68d7282a4a2c09014c115b10",
+        "69260f99a2cc498c7f38092f",
+        "69277cc5c2e2ee00122ef2d0",
+        "69277cad5e7f2f5dade60755"
+      ]
+    },
+    {
+      "position": 19,
+      "productId": "68d090c84d4f268dfdd4115c",
+      "displayName": "طقم للبنات– موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "68e90e8638740c01346cfa8d",
+        "68e90e8638740c01346cfa8e",
+        "68e90e8638740c01346cfa8f",
+        "68e90e8638740c01346cfa90",
+        "68e90e8638740c01346cfa91",
+        "68e90e8638740c01346cfa93",
+        "68e90e8638740c01346cfa94",
+        "68e90e8638740c01346cfa95",
+        "68e90e8638740c01346cfa96",
+        "68e90e8638740c01346cfa97",
+        "68e90e8638740c01346cfa99",
+        "68e90e8638740c01346cfa9a",
+        "68e90e8638740c01346cfa9b",
+        "68e90e8638740c01346cfa9c",
+        "68e90e8638740c01346cfa9d"
+      ],
+      "orderedImageIds": [
+        "68d08f66c9d6ff7babe323f2",
+        "690295484a2c09014cbd229a",
+        "68e90deb38740c01346cfa04",
+        "68e90dec4a2c09014c55021a"
+      ]
+    },
+    {
+      "position": 20,
+      "productId": "68bfbfad33be8e3d2ee53bbc",
+      "displayName": "طقم للاولاد – موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6996568f9837497a3e6e548b",
+        "6996568f9837497a3e6e548d",
+        "6996568f9837497a3e6e548f",
+        "6996568f9837497a3e6e5491",
+        "6996568f9837497a3e6e5493",
+        "6996568f9837497a3e6e5495",
+        "6996568f9837497a3e6e5497",
+        "6996568f9837497a3e6e5498",
+        "6996568f9837497a3e6e5499",
+        "6996568f9837497a3e6e549a",
+        "6996568f9837497a3e6e549b",
+        "6996568f9837497a3e6e549c",
+        "6996568f9837497a3e6e549e",
+        "6996568f9837497a3e6e549f",
+        "6996568f9837497a3e6e54a0",
+        "6996568f9837497a3e6e54a1",
+        "6996568f9837497a3e6e54a2",
+        "6996568f9837497a3e6e54a3"
+      ],
+      "orderedImageIds": [
+        "68bfc8b4f8b095314b169f35",
+        "68bfc8b333be8e3d2ee53d79",
+        "68bfc8b4ed64350115d4e33f",
+        "68bfbe6933be8e3d2ee53b97",
+        "68bfbe69f8b095314b169e03",
+        "68bfc8b033be8e3d2ee53d77",
+        "699656c20271c400138f4604",
+        "699656c20271c400138f4603",
+        "699658470271c400138f47a1",
+        "699658460271c400138f479f",
+        "699658470271c400138f47a3"
+      ]
+    },
+    {
+      "position": 21,
+      "productId": "68b0d23ff8b095314bfdbec3",
+      "displayName": "طقم للبنات موضة الخريف و الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "68f035ef182ebc0562aba464",
+        "68f035ef182ebc0562aba466",
+        "68f035ef182ebc0562aba468",
+        "68f035ef182ebc0562aba46a",
+        "68f035ef182ebc0562aba46c",
+        "68f035ef182ebc0562aba46d",
+        "68f035ef182ebc0562aba46e",
+        "68f035ef182ebc0562aba46f",
+        "68f035ef182ebc0562aba470",
+        "68f035ef182ebc0562aba471",
+        "68f035ef182ebc0562aba472",
+        "68f035ef182ebc0562aba473",
+        "68f035ef182ebc0562aba474",
+        "68f035ef182ebc0562aba475",
+        "68f035ef182ebc0562aba476"
+      ],
+      "orderedImageIds": [
+        "68f0359b4a2c09014c6e138c",
+        "68f0359b38740c01348788d8",
+        "68f0359e4a2c09014c6e1396",
+        "68f0359e182ebc0562aba351"
+      ]
+    },
+    {
+      "position": 22,
+      "productId": "68484ba87094c9d2d4ced82f",
+      "displayName": "​ طقم للبنات موضة الصيف 2025 ​​​",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "6882c1708135f3177f4f2f21",
+        "6882c1708135f3177f4f2f23",
+        "6882c1708135f3177f4f2f25",
+        "6882c1708135f3177f4f2f27",
+        "6882c1708135f3177f4f2f29",
+        "6882c1708135f3177f4f2f2b",
+        "6882c1708135f3177f4f2f2d",
+        "6882c1708135f3177f4f2f2e",
+        "6882c1708135f3177f4f2f2f",
+        "6882c1708135f3177f4f2f30",
+        "6882c1708135f3177f4f2f31",
+        "6882c1708135f3177f4f2f32",
+        "6882c1708135f3177f4f2f34",
+        "6882c1708135f3177f4f2f35",
+        "6882c1708135f3177f4f2f36",
+        "6882c1708135f3177f4f2f37",
+        "6882c1708135f3177f4f2f38",
+        "6882c1708135f3177f4f2f39"
+      ],
+      "orderedImageIds": [
+        "684849327094c9d2d4ced6d0",
+        "6848493388dffcd4a0c83185",
+        "6882c1b48135f3177f4f2fbe",
+        "6882c2218135f3177f4f3010",
+        "6882c2208257c89fb4cbd3c5"
+      ]
+    },
+    {
+      "position": 23,
+      "productId": "68115d066ac2400012a1e157",
+      "displayName": "طقم للبنات موضة الربيع والصيف 2025",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "687e4ad8421c3313a80c734d",
+        "687e4ad8421c3313a80c734f",
+        "687e4ad8421c3313a80c7351",
+        "687e4ad8421c3313a80c7353",
+        "687e4ad8421c3313a80c7355",
+        "687e4ad8421c3313a80c7357",
+        "687e4ad8421c3313a80c7358",
+        "687e4ad8421c3313a80c7359",
+        "687e4ad8421c3313a80c735a",
+        "687e4ad8421c3313a80c735b",
+        "687e4ad8421c3313a80c735c",
+        "687e4ad8421c3313a80c735d"
+      ],
+      "orderedImageIds": [
+        "68115cb26ac2400012a1e13a",
+        "68115cada5cd430012de6bb1",
+        "68115cab6ac2400012a1e137",
+        "68115cb27c1806367beba609",
+        "68115ca06ac2400012a1e134",
+        "68115ca77c1806367beba606",
+        "68115cb3a5cd430012de6bb4"
+      ]
+    },
+    {
+      "position": 24,
+      "productId": "680199b47c1806367b9206f0",
+      "displayName": "طقم للنساء موضة الربيع والصيف 2025",
+      "categorySlugs": [
+        "women"
+      ],
+      "variantIds": [
+        "680199d364da49fb94301fec",
+        "680199d364da49fb94301fee",
+        "680199d364da49fb94301ff0",
+        "680199d364da49fb94301ff2",
+        "680199d364da49fb94301ff4",
+        "680199d364da49fb94301ff6",
+        "68019a0239836f2c41bd38e7",
+        "68019a0239836f2c41bd38e8",
+        "68019a0239836f2c41bd38e9",
+        "68019a0239836f2c41bd38ea",
+        "68019a0239836f2c41bd38eb",
+        "68019a0239836f2c41bd38ec",
+        "686dbe562bee46e838f842b1",
+        "686dbe562bee46e838f842b2",
+        "686dbe562bee46e838f842b3",
+        "686dbe562bee46e838f842b4",
+        "686dbe562bee46e838f842b5",
+        "686dbe562bee46e838f842b6"
+      ],
+      "orderedImageIds": [
+        "6801989d7c1806367b920662",
+        "686dbda72bee46e838f840df",
+        "6801989b64da49fb94301f6c",
+        "6801989939836f2c41bd37c6",
+        "6801989b64da49fb94301f6b",
+        "6801989b39836f2c41bd37ca",
+        "6801989d64da49fb94301f6e",
+        "6801989d39836f2c41bd37d3",
+        "680198a264da49fb94301f70"
+      ]
+    },
+    {
+      "position": 25,
+      "productId": "67f84b0328d303d3bdfd4c69",
+      "displayName": "فستان للبنات موضة الربيع والصيف 2025",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "683a43321418d4d91f1ed982",
+        "683a43321418d4d91f1ed984",
+        "683a43321418d4d91f1ed986",
+        "683a43321418d4d91f1ed988",
+        "683a43321418d4d91f1ed98a",
+        "683a43321418d4d91f1ed98c",
+        "683a43321418d4d91f1ed98d",
+        "683a43321418d4d91f1ed98e",
+        "683a43321418d4d91f1ed98f",
+        "683a43321418d4d91f1ed990",
+        "683a43321418d4d91f1ed991",
+        "683a43321418d4d91f1ed992",
+        "683a43321418d4d91f1ed993",
+        "683a43321418d4d91f1ed994",
+        "683a43321418d4d91f1ed995",
+        "683a43321418d4d91f1ed996",
+        "683a43321418d4d91f1ed997",
+        "683a43321418d4d91f1ed998"
+      ],
+      "orderedImageIds": [
+        "67fa3ecf7c1806367b74eeb6",
+        "67fa3f6339836f2c4191c85a",
+        "67fa3f007c1806367b74eef2",
+        "67fa3f637c1806367b74ef45",
+        "67fa3f0064da49fb9408e427",
+        "67fa3ed264da49fb9408e332",
+        "683a44487094c9d2d49456ce",
+        "683a44481418d4d91f1eda07",
+        "683a44477094c9d2d49456cc"
+      ]
+    },
+    {
+      "position": 26,
+      "productId": "67c2533d9acbf0549c87e956",
+      "displayName": "طقم للبنات موضة 2026",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "68c35280ed64350115dc437a",
+        "6a11a3e6fccae69044081e6b",
+        "6a11a3e6fccae69044081e6d",
+        "6a11a3e6fccae69044081e6f",
+        "6a11a3e6fccae69044081e71",
+        "6a11a3e6fccae69044081e73",
+        "6a11a3e6fccae69044081e75"
+      ],
+      "orderedImageIds": [
+        "67c2518aa8039c001210c6f0",
+        "67c2518a9acbf0549c87e740",
+        "67c2518a9acbf0549c87e741",
+        "67c2518a014dfa9ae6f69957",
+        "67c2518a9acbf0549c87e742",
+        "68c353ee33be8e3d2eebb60a",
+        "68c49149ed64350115e12746"
+      ]
+    },
+    {
+      "position": 27,
+      "productId": "67b50ff59acbf0549c53c8ee",
+      "displayName": "طقم الأولاد KING موضة 2025",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "67b50ff59acbf0549c53c8fc",
+        "67b50ff59acbf0549c53c8fe",
+        "67b50ff59acbf0549c53c900",
+        "67b50ff59acbf0549c53c902",
+        "67b50ff59acbf0549c53c904",
+        "67b50ff59acbf0549c53c906",
+        "67b50ff59acbf0549c53c908",
+        "67b50ff59acbf0549c53c909",
+        "67b50ff59acbf0549c53c90a",
+        "67b50ff59acbf0549c53c90b",
+        "67b50ff59acbf0549c53c90c",
+        "67b50ff59acbf0549c53c90d",
+        "67b50ff59acbf0549c53c90f",
+        "67b50ff59acbf0549c53c910",
+        "67b50ff59acbf0549c53c911",
+        "67b50ff59acbf0549c53c912",
+        "67b50ff59acbf0549c53c913",
+        "67b50ff59acbf0549c53c914"
+      ],
+      "orderedImageIds": [
+        "67b50e219acbf0549c53c862",
+        "67b50e1b014dfa9ae6bc070b",
+        "67b50e21014dfa9ae6bc0714",
+        "67b50e219acbf0549c53c863",
+        "67b50e229acbf0549c53c865",
+        "67b50e22a8039c0012e18a2a",
+        "67b50e22014dfa9ae6bc0717",
+        "67b50e22014dfa9ae6bc0718",
+        "67b50e23014dfa9ae6bc071a"
+      ]
+    },
+    {
+      "position": 28,
+      "productId": "67a4ed3d2e15b50012b48339",
+      "displayName": "طقم للبنات موضة 2025",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "68a8d4bb33be8e3d2ebe2fb5",
+        "68a8d4bb33be8e3d2ebe2fb7",
+        "68a8d4bb33be8e3d2ebe2fb9",
+        "68a8d4bb33be8e3d2ebe2fbb",
+        "68a8d4bb33be8e3d2ebe2fbd",
+        "68a8d4bb33be8e3d2ebe2fbf",
+        "68a8d4bb33be8e3d2ebe2fc1",
+        "68a8d4bb33be8e3d2ebe2fc2",
+        "68a8d4bb33be8e3d2ebe2fc3",
+        "68a8d4bb33be8e3d2ebe2fc4",
+        "68a8d4bb33be8e3d2ebe2fc5",
+        "68a8d4bb33be8e3d2ebe2fc6",
+        "68a8d4bb33be8e3d2ebe2fc8",
+        "68a8d4bb33be8e3d2ebe2fc9",
+        "68a8d4bb33be8e3d2ebe2fca",
+        "68a8d4bb33be8e3d2ebe2fcb",
+        "68a8d4bb33be8e3d2ebe2fcc",
+        "68a8d4bb33be8e3d2ebe2fcd"
+      ],
+      "orderedImageIds": [
+        "67a4eb98f4650400128ab2a4",
+        "68a8d7fb33be8e3d2ebe3199",
+        "68a8d7faf8b095314bdb44f1",
+        "67a4eb982e15b50012b480a5",
+        "68a8d7faf8b095314bdb44f0",
+        "67a4eb97a8039c0012a2da64"
+      ]
+    },
+    {
+      "position": 29,
+      "productId": "673d10ce2ef7c50d762253e1",
+      "displayName": "طقم للاطفال موضه الشتاء",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "67684bf5d1c4224fec2e70b2",
+        "67684bf5d1c4224fec2e70b4",
+        "67684bf5d1c4224fec2e70b6",
+        "67684bf5d1c4224fec2e70b8",
+        "67684bf5d1c4224fec2e70ba",
+        "67684bf5d1c4224fec2e70bc"
+      ],
+      "orderedImageIds": [
+        "6765f471bbc12fe04b43b5c8",
+        "673d0f192ef7c50d762253a2"
+      ]
+    },
+    {
+      "position": 30,
+      "productId": "66ee0365b2566d051d29507b",
+      "displayName": "​ طقم شانيل للبنات موضة 2025​​​",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "68dae77d4a2c09014c22a6d4",
+        "68dae77d4a2c09014c22a6d6",
+        "68dae77d4a2c09014c22a6d8",
+        "68dae77d4a2c09014c22a6da",
+        "68dae77d4a2c09014c22a6dc",
+        "68dae77d4a2c09014c22a6de",
+        "68dae77d4a2c09014c22a6df",
+        "68dae77d4a2c09014c22a6e0",
+        "68dae77d4a2c09014c22a6e1",
+        "68dae77d4a2c09014c22a6e2",
+        "68dae77d4a2c09014c22a6e3",
+        "68dae77d4a2c09014c22a6e4"
+      ],
+      "orderedImageIds": [
+        "66ee01a2b2566d051d295017",
+        "66ee01a37c1e0901d36ea544",
+        "66ee01a27c1e0901d36ea542",
+        "66ee01a4865c7903e6f7813c",
+        "66ee02bfb2566d051d295048",
+        "66ee02dab2566d051d29504b",
+        "66ee02e7865c7903e6f78193",
+        "66ee02ed865c7903e6f78195",
+        "66ee02ef7c1e0901d36ea5a4",
+        "68dae7d0182ebc056265c212",
+        "68dae7d238740c0134388f21"
+      ]
+    },
+    {
+      "position": 31,
+      "productId": "66c33429508cec0258cf64c9",
+      "displayName": "​ طقم للأولاد والبنات موضة 2025 ​",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "67da1b36a8039c0012639679",
+        "67da1b36a8039c001263967b",
+        "67da1b36a8039c001263967d",
+        "67da1b36a8039c001263967f",
+        "67da1b36a8039c0012639681",
+        "67da1b36a8039c0012639683",
+        "67da1b36a8039c0012639684",
+        "67da1b36a8039c0012639685",
+        "67da1b36a8039c0012639686",
+        "67da1b36a8039c0012639687",
+        "67da1b36a8039c0012639688",
+        "67da1b36a8039c0012639689",
+        "68a97a76ed64350115a7d596",
+        "68a97a76ed64350115a7d597",
+        "68a97a76ed64350115a7d598",
+        "68a97a76ed64350115a7d599",
+        "68a97a76ed64350115a7d59a",
+        "68a97a76ed64350115a7d59b"
+      ],
+      "orderedImageIds": [
+        "68e5933738740c01346292a0",
+        "66c332606c48d301ba2ff6c9",
+        "67da1aca014dfa9ae653f6ca",
+        "66c33260508cec0258cf630f",
+        "66fec0a1b412f2007f71dcaf",
+        "67da1bdb9acbf0549cebd8b3",
+        "68a97a8f33be8e3d2ec06b68"
+      ]
+    },
+    {
+      "position": 32,
+      "productId": "66aad9d56c48d301baac6115",
+      "displayName": "طقم نسائي موضة الصيف و الخريف 2025",
+      "categorySlugs": [
+        "women"
+      ],
+      "variantIds": [
+        "67b5c89ba8039c0012e1f75c",
+        "67b5c89ba8039c0012e1f75d",
+        "67b5c89ba8039c0012e1f75e",
+        "67b5c89ba8039c0012e1f75f",
+        "67b5c89ba8039c0012e1f760",
+        "67b5c89ba8039c0012e1f761"
+      ],
+      "orderedImageIds": [
+        "66ec80c3865c7903e6f162dd",
+        "67d828e3a8039c00125c687f"
+      ]
+    },
+    {
+      "position": 33,
+      "productId": "6668fda14b595300c4b60b59",
+      "displayName": "طقم من 3 قطع للبنات لصيف 2025",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "680acf71eb78a300126abbee",
+        "680acf71eb78a300126abbf0",
+        "680acf71eb78a300126abbf2",
+        "680acf71eb78a300126abbf4",
+        "680acf71eb78a300126abbf6",
+        "680acf71eb78a300126abbf8",
+        "680acf71eb78a300126abbf9",
+        "680acf71eb78a300126abbfa",
+        "680acf71eb78a300126abbfb",
+        "680acf71eb78a300126abbfc",
+        "680acf71eb78a300126abbfd",
+        "680acf71eb78a300126abbfe"
+      ],
+      "orderedImageIds": [
+        "6668fc584b595300c4b60a82",
+        "6668fc599a88a401ad072c8b",
+        "6668fc584b595300c4b60a81",
+        "6668fc589a88a401ad072c8a",
+        "680acf9c6ac24000127dc15a",
+        "680acf9c7c1806367bc9b3e5"
+      ]
+    },
+    {
+      "position": 34,
+      "productId": "665c5df12cf9f500ac068458",
+      "displayName": "طقم MONSTERS من 3 قطع للأولاد الصغار",
+      "categorySlugs": [
+        "kids"
+      ],
+      "variantIds": [
+        "66a2336f083bb001258cb5d6",
+        "66a2336f083bb001258cb5d8",
+        "66a2336f083bb001258cb5da",
+        "66a2336f083bb001258cb5dc",
+        "66a2336f083bb001258cb5de",
+        "66a2336f083bb001258cb5e0",
+        "66a2336f083bb001258cb5e2",
+        "66a2336f083bb001258cb5e4",
+        "66a2336f083bb001258cb5e6",
+        "66a2336f083bb001258cb5e8",
+        "66a2336f083bb001258cb5ea"
+      ],
+      "orderedImageIds": [
+        "665c5d1e2cf9f500ac0683b2",
+        "665c5d1d2cf9f500ac0683b0",
+        "66a161c097ac6300468c6633"
+      ]
+    }
+  ]
+}
