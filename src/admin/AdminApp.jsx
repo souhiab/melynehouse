@@ -1,17 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   ArrowDown,
   ArrowUp,
+  CheckCircle,
+  Eye,
+  FileText,
   Image,
+  List,
   ListNumbers,
+  MagnifyingGlass,
   Package,
   Plus,
   SignOut,
   Storefront,
   UploadSimple,
+  X,
 } from "@phosphor-icons/react";
 import { colorOptionFor, colorOfVariant } from "../product-colors.js";
+import { deriveProductStats, filterOwnerProducts } from "./product-stats.js";
+import { readSidebarPreference, saveSidebarPreference } from "./sidebar-preference.js";
 import "./admin.css";
 
 const csrfToken = () => decodeURIComponent(
@@ -302,19 +310,50 @@ function ImageManager({ product, onChanged }) {
 
 function ProductsPanel({ data, reload }) {
   const [editingId, setEditingId] = useState(null);
+  const [query, setQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [message, setMessage] = useState("");
+  const [actionError, setActionError] = useState("");
   const editing = editingId === "new" ? "new" : data.products.find((product) => product.id === editingId);
+  const stats = deriveProductStats(data.products, data.publicProducts);
+  const shownProducts = useMemo(() => filterOwnerProducts(data.products, query, filterStatus), [data.products, query, filterStatus]);
+  const statusLabels = { published: "منشور", hidden: "مخفي", archived: "مؤرشف" };
   const archive = async (product) => {
     if (!window.confirm(`أرشفة ${product.displayName}؟ سيبقى محفوظاً للطلبات السابقة.`)) return;
-    await api(`/api/admin/products/${product.id}/archive`, { method: "POST", body: "{}" });
-    if (editingId === product.id) setEditingId(null);
-    await reload();
+    setActionError(""); setMessage("");
+    try {
+      await api(`/api/admin/products/${product.id}/archive`, { method: "POST", body: "{}" });
+      if (editingId === product.id) setEditingId(null);
+      await reload();
+      setMessage("تمت أرشفة المنتج ويمكن استعادته لاحقاً.");
+    } catch (error) { setActionError(error.message); }
   };
+  const restore = async (product) => {
+    setActionError(""); setMessage("");
+    try {
+      await api(`/api/admin/products/${product.id}/restore`, { method: "POST", body: "{}" });
+      await reload();
+      setMessage("تمت استعادة المنتج كمخفي. انشره من صفحة التعديل عند الاستعداد.");
+    } catch (error) { setActionError(error.message); }
+  };
+  const cards = [
+    { key: "total", label: "إجمالي المنتجات", detail: "تشمل المؤرشفة", Icon: Package },
+    { key: "published", label: "المنتجات المنشورة", detail: "حالتها منشور في الكتالوج", Icon: CheckCircle },
+    { key: "draft", label: "المنتجات المسودة", detail: "لا توجد حالة مسودة للمنتجات حالياً", Icon: FileText },
+    { key: "visible", label: "المنتجات الظاهرة في المتجر", detail: "حسب واجهة المتجر العامة", Icon: Eye },
+  ];
   return (
-    <section>
-      <div className="panel-title"><div><h1>المنتجات</h1><p>{data.products.length} منتجاً محفوظاً، بما فيها المنتجات المخفية والمؤرشفة.</p></div><button onClick={() => setEditingId("new")}><Plus /> منتج جديد</button></div>
-      {editing && <ProductEditor product={editing === "new" ? null : editing} categories={data.categories} onCancel={() => setEditingId(null)} onSaved={async () => { setEditingId(null); await reload(); }} />}
+    <section className="owner-products-page">
+      <div className="panel-title owner-products-header"><div><h1>المنتجات</h1><p>إدارة المنتجات والأسعار والصور والتوفر في متجرك.</p></div><button type="button" onClick={() => { setEditingId("new"); setMessage(""); }}><Plus size={20} weight="bold" /> منتج جديد</button></div>
+      {actionError && <div className="owner-error" role="alert">{actionError}</div>}
+      {message && <div className="owner-success" role="status">{message}</div>}
+      <div className="owner-stats-grid" aria-label="ملخص المنتجات">{cards.map(({ key, label, detail, Icon }) => <article className={`owner-stat-card owner-stat-${key}`} key={key}><span className="owner-stat-icon"><Icon size={25} weight="duotone" aria-hidden="true" /></span><div><span className="owner-stat-value">{stats[key] ?? "—"}</span><h2>{label}</h2><p>{detail}</p></div></article>)}</div>
+      <p className="owner-stats-note">المنشور يعني حالة المنتج في قاعدة البيانات. الظاهر هو ما تعيده واجهة المتجر العامة؛ حالياً تشمل المنتجات المنشورة حتى لو نفد مخزونها. لا توجد حالة «مسودة» مستقلة للمنتجات، واستخدم «مخفي» لحفظ منتج دون نشره.</p>
+      {editing && <ProductEditor product={editing === "new" ? null : editing} categories={data.categories} onCancel={() => setEditingId(null)} onSaved={async () => { setEditingId(null); await reload(); setMessage("تم حفظ المنتج بنجاح."); }} />}
       {editing && editing !== "new" && <ImageManager product={editing} onChanged={reload} />}
-      <div className="admin-list">{data.products.map((product) => <article key={product.id}><img src={product.images[0]?.localOptimizedPath} alt="" /><div><strong>{product.displayName}</strong><small>{money(product.price.current)} · {product.status}</small></div><span className={`status-pill ${product.status}`}>{product.status}</span><button className="quiet" onClick={() => setEditingId(product.id)}>تعديل</button><button className="danger" disabled={product.status === "archived"} onClick={() => archive(product)}><Archive /> أرشفة</button></article>)}</div>
+      <div className="owner-product-toolbar"><label className="owner-product-search"><span>البحث في المنتجات</span><span className="owner-search-field"><MagnifyingGlass size={19} aria-hidden="true" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="الاسم أو SKU أو الرابط" /></span></label><label className="owner-product-filter">الحالة<select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}><option value="all">كل الحالات</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select></label><span className="owner-product-count" role="status">عرض {shownProducts.length} من {data.products.length}</span></div>
+      <div className="admin-list owner-products-list">{shownProducts.map((product) => <article key={product.id}>{product.images[0]?.localOptimizedPath ? <img src={product.images[0].localOptimizedPath} alt="" /> : <span className="owner-product-image-empty"><Package size={26} aria-hidden="true" /></span>}<div className="owner-product-copy"><strong>{product.displayName}</strong><small>{money(product.price.current)} · {product.sku || "بلا SKU"}</small></div><span className={`status-pill ${product.status}`}>{statusLabels[product.status] || product.status}</span><button type="button" className="quiet" onClick={() => { setEditingId(product.id); setMessage(""); }}>تعديل</button>{product.status === "archived" ? <button type="button" className="quiet" onClick={() => restore(product)}>استعادة</button> : <button type="button" className="danger" onClick={() => archive(product)}><Archive /> أرشفة</button>}</article>)}</div>
+      {!shownProducts.length && <p className="owner-products-empty">لا توجد منتجات مطابقة. جرّب تغيير البحث أو الحالة.</p>}
     </section>
   );
 }
@@ -421,12 +460,17 @@ function OrdersPanel({ data, reload }) {
 export function AdminApp() {
   const [session, setSession] = useState(undefined);
   const [tab, setTab] = useState("products");
-  const [data, setData] = useState({ products: [], categories: [], banners: [], orders: [] });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarPreference());
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuRef = useRef(null);
+  const mobileCloseRef = useRef(null);
+  const mobileWasOpen = useRef(false);
+  const [data, setData] = useState({ products: [], publicProducts: [], categories: [], banners: [], orders: [] });
   const [error, setError] = useState("");
   const load = async () => {
     try {
-      const [products, storefront, banners, orders] = await Promise.all([api("/api/admin/products"), api("/api/public/storefront"), api("/api/admin/banners"), api("/api/admin/orders")]);
-      setData({ products: products.products, categories: storefront.categories, banners: banners.banners, orders: orders.orders });
+      const [products, storefront, banners, orders] = await Promise.all([api("/api/admin/products"), api("/api/public/storefront", { cache: "no-store" }), api("/api/admin/banners"), api("/api/admin/orders")]);
+      setData({ products: products.products, publicProducts: storefront.products, categories: storefront.categories, banners: banners.banners, orders: orders.orders });
       setError("");
     } catch (exception) {
       setError(exception.message);
@@ -441,6 +485,17 @@ export function AdminApp() {
     }
   };
   useEffect(() => { authenticate(); }, []);
+  useEffect(() => { saveSidebarPreference(undefined, sidebarCollapsed); }, [sidebarCollapsed]);
+  useEffect(() => {
+    if (mobileOpen) { mobileCloseRef.current?.focus(); mobileWasOpen.current = true; }
+    else if (mobileWasOpen.current) { mobileMenuRef.current?.focus(); mobileWasOpen.current = false; }
+  }, [mobileOpen]);
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const closeOnEscape = (event) => { if (event.key === "Escape") setMobileOpen(false); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
   if (session === undefined) return <main className="owner-loading">جارٍ التحقق…</main>;
   if (!session) return <Login onLogin={authenticate} />;
   const tabs = [
@@ -450,9 +505,11 @@ export function AdminApp() {
     ["orders", "الطلبات", Storefront],
   ];
   return (
-    <div className="owner-app" dir="rtl">
-      <aside><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><p>{session.displayName}</p><nav>{tabs.map(([id, label, Icon]) => <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}><Icon />{label}</button>)}</nav><a href="/" target="_blank" rel="noreferrer">عرض المتجر</a><button className="logout" onClick={async () => { await api("/api/admin/session", { method: "DELETE" }); setSession(null); }}><SignOut />خروج</button></aside>
-      <main>{error && <div className="owner-error" role="alert">{error}</div>}{tab === "products" && <ProductsPanel data={data} reload={load} />}{tab === "ordering" && <OrderingPanel data={data} reload={load} />}{tab === "banners" && <BannersPanel data={data} reload={load} />}{tab === "orders" && <OrdersPanel data={data} reload={load} />}</main>
+    <div className={`owner-app${sidebarCollapsed ? " is-collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`} dir="rtl">
+      <header className="owner-mobile-bar" inert={mobileOpen ? true : undefined}><button ref={mobileMenuRef} type="button" onClick={() => setMobileOpen((value) => !value)} aria-label={mobileOpen ? "إغلاق قائمة لوحة المالك" : "فتح قائمة لوحة المالك"} aria-controls="owner-sidebar" aria-expanded={mobileOpen}><List size={25} /></button><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><span>{tabs.find(([id]) => id === tab)?.[1]}</span></header>
+      {mobileOpen && <button type="button" className="owner-mobile-backdrop" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة" />}
+      <aside id="owner-sidebar" className="owner-sidebar"><div className="owner-sidebar-head"><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><button type="button" className="owner-sidebar-toggle" onClick={() => setSidebarCollapsed((value) => !value)} aria-label={sidebarCollapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"} aria-controls="owner-sidebar" aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}><List size={22} /></button><button ref={mobileCloseRef} type="button" className="owner-mobile-close" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة"><X size={22} /></button></div><p className="owner-name">{session.displayName}</p><nav aria-label="أقسام لوحة المالك">{tabs.map(([id, label, Icon]) => <button type="button" key={id} className={tab === id ? "active" : ""} onClick={() => { setTab(id); setMobileOpen(false); }} aria-label={label} aria-current={tab === id ? "page" : undefined} title={label} data-tooltip={label}><Icon size={22} aria-hidden="true" /><span className="owner-nav-label">{label}</span></button>)}</nav><a href="/" target="_blank" rel="noreferrer" aria-label="عرض المتجر" title="عرض المتجر" data-tooltip="عرض المتجر"><Storefront size={22} aria-hidden="true" /><span className="owner-nav-label">عرض المتجر</span></a><button type="button" className="logout" onClick={async () => { await api("/api/admin/session", { method: "DELETE" }); setSession(null); }} aria-label="خروج" title="خروج" data-tooltip="خروج"><SignOut size={22} aria-hidden="true" /><span className="owner-nav-label">خروج</span></button></aside>
+      <main inert={mobileOpen ? true : undefined}>{error && <div className="owner-error" role="alert">{error}</div>}{tab === "products" && <ProductsPanel data={data} reload={load} />}{tab === "ordering" && <OrderingPanel data={data} reload={load} />}{tab === "banners" && <BannersPanel data={data} reload={load} />}{tab === "orders" && <OrdersPanel data={data} reload={load} />}</main>
     </div>
   );
 }

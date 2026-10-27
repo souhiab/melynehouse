@@ -7,6 +7,7 @@ import request from "supertest";
 import { setupTestSystem, csrfFrom } from "./admin-test-helpers.mjs";
 import { createApp } from "../server/app.mjs";
 import { createUploadBackup } from "../server/backup-uploads.mjs";
+import { deriveProductStats } from "../src/admin/product-stats.js";
 
 async function authenticated(system) {
   const agent = request.agent(system.app);
@@ -16,12 +17,19 @@ async function authenticated(system) {
 
 test("authenticated owner can create, edit, reorder and recoverably archive a product", async (t) => {
   const system = await setupTestSystem(); t.after(async()=>{await system.db.end();await system.cleanup()}); const { agent, csrf } = await authenticated(system);
+  const metrics = async () => {
+    const [admin, publicCatalog] = await Promise.all([agent.get("/api/admin/products").expect(200), agent.get("/api/public/storefront").expect(200)]);
+    return deriveProductStats(admin.body.products, publicCatalog.body.products);
+  };
+  assert.deepEqual(await metrics(), { total: 34, published: 34, draft: null, visible: 34 });
   const payload = { sku:"TEST-1",slug:"test-owner-product",originalName:"منتج اختباري",displayName:"منتج اختباري",description:"وصف",descriptionHtml:null,priceMad:199,comparisonPriceMad:249,availability:"available",status:"published",categorySlugs:["kids"],options:[],variants:[],featured:false };
   const created = await agent.post("/api/admin/products").set("x-csrf-token",csrf).send(payload).expect(201);
+  assert.deepEqual(await metrics(), { total: 35, published: 35, draft: null, visible: 35 });
   await agent.put(`/api/admin/products/${created.body.id}`).set("x-csrf-token",csrf).send({...payload,displayName:"منتج معدل",priceMad:189}).expect(200);
   let publicData = await agent.get("/api/public/storefront").expect(200);
   assert.equal(publicData.body.products.find((product)=>product.id===created.body.id).displayName,"منتج معدل");
   await agent.put(`/api/admin/products/${created.body.id}`).set("x-csrf-token",csrf).send({...payload,displayName:"منتج معدل",priceMad:189,status:"hidden"}).expect(200);
+  assert.deepEqual(await metrics(), { total: 35, published: 34, draft: null, visible: 34 });
   publicData=await agent.get("/api/public/storefront").expect(200);assert.equal(publicData.body.products.some((product)=>product.id===created.body.id),false);
   await agent.put(`/api/admin/products/${created.body.id}`).set("x-csrf-token",csrf).send({...payload,displayName:"منتج معدل",priceMad:189,status:"published"}).expect(200);
   const kids = publicData.body.products.filter((product)=>product.categories.some((category)=>category.slug==="kids"));
@@ -30,6 +38,7 @@ test("authenticated owner can create, edit, reorder and recoverably archive a pr
   publicData = await agent.get("/api/public/storefront").expect(200);
   assert.equal(publicData.body.products.find((product)=>product.id===created.body.id).categoryPositions.kids,1);
   await agent.post(`/api/admin/products/${created.body.id}/archive`).set("x-csrf-token",csrf).send({}).expect(200);
+  assert.deepEqual(await metrics(), { total: 35, published: 34, draft: null, visible: 34 });
   publicData = await agent.get("/api/public/storefront").expect(200);
   assert.equal(publicData.body.products.some((product)=>product.id===created.body.id),false);
   const adminData = await agent.get("/api/admin/products").expect(200);
