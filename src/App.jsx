@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft, ArrowRight, CaretDown, Check, CreditCard, EnvelopeSimple,
   FacebookLogo, HandCoins, Heart, InstagramLogo, List, MagnifyingGlass,
-  MapPin, Minus, Package, Phone, Plus, ShieldCheck, ShoppingBag,
+  Lightning, MapPin, Minus, Package, Phone, Plus, ShieldCheck, ShoppingBag,
   SlidersHorizontal, TiktokLogo, Trash, Truck, User, WhatsappLogo, X,
 } from "@phosphor-icons/react";
 import storeData from "../data/store.json";
+import { colorOptionFor, imagesForColor, thumbnailForColor } from "./product-colors.js";
+import { generalWhatsAppMessage, productWhatsAppMessage, whatsAppHref } from "./whatsapp.js";
+import { checkoutLines, validateDirectPurchase } from "./purchase.js";
 
 const categoryOrder = ["ملابس-رجالية", "women", "kids"];
 const fallbackCategories = [...storeData.categories].sort((a, b) => categoryOrder.indexOf(a.slug) - categoryOrder.indexOf(b.slug));
@@ -16,7 +19,7 @@ const pageMeta = {
   "/shop": ["المتجر | MELYNE", "تصفحوا كامل كتالوج MELYNE المتاح للنساء والرجال والأطفال."],
   "/wishlist": ["المفضلة | MELYNE", "المنتجات المحفوظة في قائمة المفضلة."],
   "/cart": ["السلة | MELYNE", "مراجعة منتجات سلة MELYNE واختيارات المقاس واللون."],
-  "/checkout": ["إتمام الطلب التجريبي | MELYNE", "مسار طلب تجريبي، لا يتم إرسال طلب أو تحصيل أي مبلغ."],
+  "/checkout": ["إتمام الطلب المحلي التجريبي | MELYNE", "يُحفظ طلب الدفع عند الاستلام محلياً فقط؛ لا يُرسل إلى المتجر الحقيقي ولا يُحصّل أي مبلغ."],
 };
 
 function useStoredState(key, initialValue) {
@@ -59,8 +62,14 @@ function Link({ to, navigate, children, className, ariaLabel, onClick }) {
 const formatPrice = (value) => value == null ? "السعر غير متوفر" : money.format(value);
 const productPath = (product) => `/products/${encodeURIComponent(product.slug)}`;
 const getProduct = (products, id) => products.find((product) => product.id === id);
-const availableVariant = (product) => product.variants.find((variant) => variant.availability === "available") || null;
+const variantCanBeBought = (variant) => variant.availability === "available" && variant.stockQuantity !== 0;
+const availableVariant = (product) => product.variants.find(variantCanBeBought) || null;
 const quantityFor = (items) => items.reduce((sum, item) => sum + item.quantity, 0);
+
+function WhatsAppLink({ href, product = false }) {
+  if (!href) return null;
+  return <a className={product ? "whatsapp-product-link" : "whatsapp-float"} href={href} target="_blank" rel="noopener noreferrer" aria-label={product ? "استفسر عن هذا المنتج عبر واتساب" : "تواصل مع MELYNE عبر واتساب"} title={product ? undefined : "تواصل معنا عبر واتساب"}><WhatsappLogo size={product ? 23 : 30} weight="fill" />{product && <span>استفسر عن هذا المنتج عبر واتساب</span>}</a>;
+}
 
 function AnnouncementBar() {
   return <div className="announcement" role="status"><span><Truck size={18} weight="light" /> التوصيل إلى مدن المغرب</span><span className="announcement-separator" aria-hidden="true" /><span><HandCoins size={18} weight="light" /> الدفع عند الاستلام</span></div>;
@@ -194,28 +203,56 @@ function CatalogPage({ slug, navigate, wishlist, toggleWishlist, products, categ
   </main>;
 }
 
-function ProductPage({ product, navigate, wishlist, toggleWishlist, addToCart, products }) {
+function ProductPage({ product, navigate, wishlist, toggleWishlist, addToCart, beginBuyNow, products }) {
   const firstAvailable = availableVariant(product);
   const initialSelections = Object.fromEntries((firstAvailable?.selections || []).map((selection) => [selection.option, selection.value]));
   const [selected, setSelected] = useState(initialSelections);
-  const [activeImage, setActiveImage] = useState(() => { const index = product.images.findIndex((image) => image.id === firstAvailable?.imageId); return index >= 0 ? index : 0; });
+  const [activeImageId, setActiveImageId] = useState(firstAvailable?.imageId || product.images[0]?.id);
   const [quantity, setQuantity] = useState(1);
+  const [purchaseError, setPurchaseError] = useState("");
+  const [isNavigating, startTransition] = useTransition();
+  const colorOption = colorOptionFor(product);
+  const selectedColor = colorOption ? selected[colorOption.name] : null;
+  const galleryImages = imagesForColor(product, selectedColor);
   const matchedVariant = product.variants.find((variant) => variant.selections.every((selection) => selected[selection.option] === selection.value));
-  const canBuy = matchedVariant ? matchedVariant.availability === "available" : product.variants.length === 0 && product.availability === "available";
+  const canBuy = product.availability === "available" && (matchedVariant ? variantCanBeBought(matchedVariant) : product.variants.length === 0);
   const maximumQuantity = Number.isFinite(matchedVariant?.stockQuantity) && matchedVariant.stockQuantity > 0 ? matchedVariant.stockQuantity : 99;
-  const selectValue = (optionName, value) => { const next = { ...selected, [optionName]: value }; setSelected(next); const match = product.variants.find((variant) => variant.selections.every((selection) => next[selection.option] === selection.value)); const imageIndex = match?.imageId ? product.images.findIndex((image) => image.id === match.imageId) : -1; if (imageIndex >= 0) setActiveImage(imageIndex); };
-  const valueAvailable = (optionName, value) => product.variants.some((variant) => variant.availability === "available" && variant.selections.every((selection) => selection.option === optionName ? selection.value === value : !selected[selection.option] || selection.value === selected[selection.option]));
-  const image = product.images[activeImage] || product.images[0];
+  const selectValue = (optionName, value) => {
+    const next = { ...selected, [optionName]: value };
+    if (colorOption?.name === optionName) {
+      const sameSizeAvailable = product.variants.some((variant) => variantCanBeBought(variant) && variant.selections.every((selection) => next[selection.option] === selection.value));
+      if (!sameSizeAvailable) product.options.filter((option) => option.name !== optionName).forEach((option) => { delete next[option.name]; });
+    }
+    const match = product.variants.find((variant) => variant.selections.every((selection) => next[selection.option] === selection.value));
+    const nextImages = imagesForColor(product, colorOption ? next[colorOption.name] : null);
+    const preferred = nextImages.find((image) => image.id === match?.imageId) || thumbnailForColor(product, colorOption ? next[colorOption.name] : null) || nextImages[0];
+    setSelected(next);
+    setPurchaseError("");
+    setActiveImageId(preferred?.id);
+  };
+  const valueAvailable = (optionName, value) => product.variants.some((variant) => variantCanBeBought(variant) && variant.selections.every((selection) => selection.option === optionName ? selection.value === value : optionName === colorOption?.name || !selected[selection.option] || selection.value === selected[selection.option]));
+  const image = galleryImages.find((entry) => entry.id === activeImageId) || galleryImages[0];
+  const whatsAppProductHref = whatsAppHref(storeData.whatsappSupportNumber, productWhatsAppMessage(product, selected, storeData.domain));
+  const buyNow = () => {
+    const result = validateDirectPurchase(product, selected, quantity);
+    if (result.error) { setPurchaseError(result.error); return; }
+    setPurchaseError("");
+    startTransition(() => beginBuyNow(result.item));
+  };
   return <main className="product-page shell section-space"><div className="breadcrumbs"><Link to="/" navigate={navigate}>الرئيسية</Link><span>/</span><Link to={`/shop/${encodeURIComponent(product.categories[0]?.slug || "")}`} navigate={navigate}>{product.categories[0]?.name}</Link><span>/</span><span>{product.displayName}</span></div><div className="product-detail">
-    <section className="product-gallery" aria-label="صور المنتج"><div className="main-product-image"><img src={image?.localOptimizedPath || image?.localOriginalPath} alt={product.name} /></div><div className="thumbnails">{product.images.map((entry, index) => <button key={entry.id || index} className={index === activeImage ? "active" : ""} onClick={() => setActiveImage(index)} aria-label={`عرض الصورة ${index + 1}`} aria-pressed={index === activeImage}><img src={entry.localOptimizedPath || entry.localOriginalPath} alt="" /></button>)}</div></section>
+    <section className="product-gallery" aria-label="صور المنتج"><div className="main-product-image"><img src={image?.localOptimizedPath || image?.localOriginalPath} alt={product.name} /></div><div className="thumbnails">{galleryImages.map((entry, index) => <button key={entry.id || index} className={entry.id === image?.id ? "active" : ""} onClick={() => setActiveImageId(entry.id)} aria-label={`عرض الصورة ${index + 1}`} aria-pressed={entry.id === image?.id}><img src={entry.localOptimizedPath || entry.localOriginalPath} alt="" /></button>)}</div></section>
     <section className="product-info"><span className="product-kicker">{product.categories.map((category) => category.name).join(" · ")}</span><h1>{product.name}</h1><div className="sku-line">رمز المنتج: <b>{product.sku || "غير منشور"}</b></div><Price product={product} variant={matchedVariant} />
-      {product.options.map((option) => <fieldset className="variant-group" key={option.id}><legend>{option.name} <b>{selected[option.name] || "اختر"}</b></legend><div className="variant-values">{option.values.map((value) => { const enabled = valueAvailable(option.name, value.label); return <button key={value.id} disabled={!enabled} className={selected[option.name] === value.label ? "selected" : ""} onClick={() => selectValue(option.name, value.label)}>{value.label}{selected[option.name] === value.label && <Check size={14} />}</button>; })}</div></fieldset>)}
+      {product.options.map((option) => <fieldset className="variant-group" key={option.id}><legend>{option.name} <b>{selected[option.name] || "اختر"}</b></legend><div className={option === colorOption && option.values.length > 1 ? "variant-values color-values" : "variant-values"}>{option.values.map((value) => { const enabled = valueAvailable(option.name, value.label); const isSelected = selected[option.name] === value.label; const thumb = option === colorOption && option.values.length > 1 ? thumbnailForColor(product, value.label) : null; return <button key={value.id} type="button" disabled={!enabled} className={`${isSelected ? "selected" : ""} ${option === colorOption && option.values.length > 1 ? "color-choice" : ""}`} onClick={() => selectValue(option.name, value.label)} aria-pressed={isSelected}>{option === colorOption && option.values.length > 1 && <span className="color-choice-image">{thumb ? <img src={thumb.localOptimizedPath || thumb.localOriginalPath} alt="" /> : <span aria-hidden="true">{value.label.slice(0, 1)}</span>}</span>}<span>{value.label}</span>{isSelected && <Check size={14} aria-hidden="true" />}</button>; })}</div></fieldset>)}
       <div className={`availability-line ${canBuy ? "available" : "unavailable"}`}><span />{canBuy ? `متوفر${matchedVariant?.stockQuantity != null ? ` — ${matchedVariant.stockQuantity} في المخزون` : ""}` : "هذه التوليفة غير متوفرة"}</div>
-      <div className="purchase-row"><div className="quantity-control"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="تقليل الكمية" disabled={quantity <= 1}><Minus size={16} /></button><span aria-live="polite">{quantity}</span><button onClick={() => setQuantity(Math.min(maximumQuantity, quantity + 1))} aria-label="زيادة الكمية" disabled={!canBuy || quantity >= maximumQuantity}><Plus size={16} /></button></div><button className="primary-button add-button" disabled={!canBuy} onClick={() => addToCart(product, matchedVariant, quantity)}><ShoppingBag size={20} /> {canBuy ? "أضف إلى السلة" : "غير متوفر"}</button><button className={`detail-wish ${wishlist.includes(product.id) ? "active" : ""}`} onClick={() => toggleWishlist(product.id)} aria-label={wishlist.includes(product.id) ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}><Heart size={23} weight={wishlist.includes(product.id) ? "fill" : "regular"} /></button></div>
+      <div className="purchase-controls"><div className="quantity-control"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="تقليل الكمية" disabled={quantity <= 1}><Minus size={16} /></button><span aria-live="polite">{quantity}</span><button onClick={() => setQuantity(Math.min(maximumQuantity, quantity + 1))} aria-label="زيادة الكمية" disabled={!canBuy || quantity >= maximumQuantity}><Plus size={16} /></button></div><span>الكمية</span></div>
+      {purchaseError && <p className="purchase-error" role="alert">{purchaseError}</p>}
+      <button className="primary-button buy-now-button" type="button" onClick={buyNow} aria-busy={isNavigating} disabled={isNavigating || product.availability !== "available" || (matchedVariant && !variantCanBeBought(matchedVariant))}><Lightning size={21} weight="fill" /> {isNavigating ? "جارٍ الانتقال…" : "اشترِ الآن"}</button>
+      <div className="purchase-secondary"><button className="add-button" type="button" disabled={!canBuy} onClick={() => addToCart(product, matchedVariant, quantity)}><ShoppingBag size={20} /> {canBuy ? "أضف إلى السلة" : "غير متوفر"}</button><button className={`detail-wish ${wishlist.includes(product.id) ? "active" : ""}`} onClick={() => toggleWishlist(product.id)} aria-label={wishlist.includes(product.id) ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}><Heart size={23} weight={wishlist.includes(product.id) ? "fill" : "regular"} /></button></div>
+      <WhatsAppLink href={whatsAppProductHref} product />
       <div className="prototype-note"><ShieldCheck size={20} /><span><b>واجهة متجر تجريبية</b> — السلة ومسار الطلب يعملان محلياً، ولا يتم إرسال طلب حقيقي.</span></div>
       <div className="product-accordions"><details open><summary>الوصف ومعلومات المنتج <Plus size={17} /></summary><div>{product.description ? <p>{product.description}</p> : <p>لم ينشر المتجر وصفاً تفصيلياً لهذا المنتج.</p>}<dl><div><dt>العلامة</dt><dd>{product.brand?.name || "غير منشورة"}</dd></div><div><dt>الفئة</dt><dd>{product.categories.map((category) => category.name).join("، ")}</dd></div></dl></div></details><details><summary>التوصيل والدفع <Plus size={17} /></summary><div><p>تعرض صفحة المنتج الأصلية خيار الدفع عند الاستلام وتذكر التوصيل خلال 24 إلى 48 ساعة. راجع سياسات المتجر المنشورة قبل الاعتماد النهائي.</p></div></details><details><summary>الاستبدال <Plus size={17} /></summary><div><p>يخضع الاستبدال للشروط والفترة المنشورة في سياسة الاستبدال.</p><Link to="/pages/سياسة-الا-ستبدال" navigate={navigate} className="text-link">قراءة السياسة كاملة</Link></div></details></div>
     </section>
-  </div><section className="related section-space"><div className="section-heading simple"><h2>قد يعجبك أيضاً</h2><Link to={`/shop/${encodeURIComponent(product.categories[0]?.slug || "")}`} navigate={navigate} className="text-link">عرض المجموعة <ArrowLeft size={17} /></Link></div><ProductGrid items={products.filter((entry) => entry.id !== product.id && entry.categories.some((category) => product.categories.some((own) => own.slug === category.slug))).slice(0, 4)} navigate={navigate} wishlist={wishlist} toggleWishlist={toggleWishlist} /></section></main>;
+  </div><section className="related section-space"><div className="section-heading simple"><h2>قد يعجبك أيضاً</h2><Link to={`/shop/${encodeURIComponent(product.categories[0]?.slug || "")}`} navigate={navigate} className="text-link">عرض المجموعة <ArrowLeft size={17} /></Link></div><ProductGrid items={products.filter((entry) => entry.id !== product.id && entry.categories.some((category) => product.categories.some((own) => own.slug === category.slug))).slice(0, 4)} navigate={navigate} wishlist={wishlist} toggleWishlist={toggleWishlist} /></section><WhatsAppLink href={whatsAppProductHref} /></main>;
 }
 
 function WishlistPage({ wishlist, navigate, toggleWishlist, products }) {
@@ -224,6 +261,7 @@ function WishlistPage({ wishlist, navigate, toggleWishlist, products }) {
 }
 
 function cartDetails(cart, products) { return cart.map((item) => ({ ...item, product: getProduct(products, item.productId), variant: getProduct(products, item.productId)?.variants.find((variant) => variant.id === item.variantId) })).filter((item) => item.product); }
+function cartItemUnavailable(item) { return item.product.availability !== "available" || (item.product.variants.length > 0 && (!item.variant || !variantCanBeBought(item.variant))) || (item.variant?.stockQuantity != null && item.quantity > item.variant.stockQuantity); }
 
 function OrderSummary({ subtotal, navigate, checkout = false, blocked = false }) {
   return <aside className="order-summary"><h2>ملخص الطلب</h2><div><span>المجموع الفرعي</span><strong>{formatPrice(subtotal)}</strong></div><div><span>التوصيل</span><b>يؤكد عند الطلب</b></div><div className="summary-total"><span>المجموع</span><strong>{formatPrice(subtotal)}</strong></div><p className="prototype-label">{blocked ? "تحتوي السلة على اختيار غير متوفر. احذفه قبل المتابعة." : "نموذج أولي — لا يتم تحصيل أي مبلغ."}</p>{!checkout && <button className="primary-button" disabled={blocked} onClick={() => navigate("/checkout")}>متابعة إتمام الطلب <ArrowLeft size={18} /></button>}<Link to="/shop" navigate={navigate} className="continue-link"><ArrowRight size={16} /> متابعة التسوق</Link></aside>;
@@ -232,7 +270,7 @@ function OrderSummary({ subtotal, navigate, checkout = false, blocked = false })
 function CartPage({ cart, setCart, navigate, products }) {
   const items = cartDetails(cart, products);
   const subtotal = items.reduce((sum, item) => sum + (item.variant?.price.current ?? item.product.price.current ?? 0) * item.quantity, 0);
-  const hasUnavailable = items.some((item) => item.product.variants.length ? item.variant?.availability !== "available" : item.product.availability !== "available");
+  const hasUnavailable = items.some(cartItemUnavailable);
   const change = (key, quantity) => setCart(cart.map((item) => {
     if (item.key !== key) return item;
     const product = getProduct(products, item.productId);
@@ -244,10 +282,12 @@ function CartPage({ cart, setCart, navigate, products }) {
   return <main className="shell section-space cart-page"><div className="page-heading"><span>مراجعة الطلب</span><h1>سلة التسوق</h1><p>{items.length ? `${quantityFor(cart)} قطع في سلتك` : "سلتك فارغة حالياً."}</p></div>{!items.length ? <div className="empty-state"><ShoppingBag size={48} weight="light" /><h3>السلة بانتظار اختياراتك</h3><p>تصفح الكتالوج واختر اللون والمقاس المتاح.</p><Link to="/shop" navigate={navigate} className="primary-button">تصفح المنتجات</Link></div> : <div className="cart-layout"><section className="cart-items">{items.map((item) => { const image = item.product.images.find((entry) => entry.id === item.variant?.imageId) || item.product.images[0]; const maximum = Number.isFinite(item.variant?.stockQuantity) && item.variant.stockQuantity > 0 ? item.variant.stockQuantity : 99; return <article className="cart-item" key={item.key}><img src={image?.localOptimizedPath || image?.localOriginalPath} alt={item.product.name} /><div className="cart-item-copy"><Link to={productPath(item.product)} navigate={navigate}>{item.product.displayName}</Link><p>{item.variant?.selections.map((selection) => `${selection.option}: ${selection.value}`).join(" · ")}</p><Price product={item.product} variant={item.variant} compact /><div className="cart-item-actions"><div className="quantity-control small"><button onClick={() => change(item.key, item.quantity - 1)} aria-label="تقليل الكمية" disabled={item.quantity <= 1}><Minus size={14} /></button><span>{item.quantity}</span><button onClick={() => change(item.key, item.quantity + 1)} aria-label="زيادة الكمية" disabled={item.quantity >= maximum || item.variant?.availability === "unavailable"}><Plus size={14} /></button></div><button className="remove-button" onClick={() => remove(item.key)}><Trash size={17} /> حذف</button></div></div></article>; })}</section><OrderSummary subtotal={subtotal} navigate={navigate} blocked={hasUnavailable} /></div>}</main>;
 }
 
-function CheckoutPage({ cart, setCart, navigate, products }) {
-  const items = cartDetails(cart, products);
+function CheckoutPage({ cart, setCart, navigate, products, route, directPurchase, clearDirectPurchase }) {
+  const directMode = new URLSearchParams(route.split("?")[1] || "").get("buy") === "1";
+  const orderLines = checkoutLines(cart, directPurchase, directMode);
+  const items = cartDetails(orderLines, products);
   const subtotal = items.reduce((sum, item) => sum + (item.variant?.price.current ?? item.product.price.current ?? 0) * item.quantity, 0);
-  const hasUnavailable = items.some((item) => item.product.variants.length ? item.variant?.availability !== "available" : item.product.availability !== "available");
+  const hasUnavailable = items.some(cartItemUnavailable);
   const [complete, setComplete] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -255,14 +295,14 @@ function CheckoutPage({ cart, setCart, navigate, products }) {
     event.preventDefault(); setSubmitting(true); setSubmitError("");
     const form = new FormData(event.currentTarget);
     try {
-      const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ customer: { name: form.get("name"), phone: form.get("phone"), city: form.get("city"), address: form.get("address") }, note: form.get("note") || "", items: cart.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity })) }) });
-      const body = await response.json(); if (!response.ok) throw new Error(body.error || "تعذر تسجيل الطلب"); setComplete(body); setCart([]);
+      const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ customer: { name: form.get("name"), phone: form.get("phone"), city: form.get("city"), address: form.get("address") }, note: form.get("note") || "", items: orderLines.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity })) }) });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error || "تعذر تسجيل الطلب"); setComplete(body); if (directMode) clearDirectPurchase(); else setCart([]);
     } catch (error) { setSubmitError(error.message); } finally { setSubmitting(false); }
   };
-  if (!items.length && !complete) return <main className="shell section-space"><div className="empty-state"><ShoppingBag size={48} weight="light" /><h1>لا يمكن بدء الطلب</h1><p>أضف منتجاً متاحاً إلى السلة أولاً.</p><Link to="/shop" navigate={navigate} className="primary-button">العودة إلى المتجر</Link></div></main>;
-  if (hasUnavailable && !complete) return <main className="shell section-space"><div className="empty-state"><Package size={48} weight="light" /><h1>اختيار غير متوفر في السلة</h1><p>احذف الاختيار غير المتوفر أو استبدله بتوليفة متاحة قبل متابعة الطلب.</p><Link to="/cart" navigate={navigate} className="primary-button">مراجعة السلة</Link></div></main>;
-  if (complete) return <main className="shell section-space"><div className="checkout-success"><Check size={34} weight="bold" /><span>تم تسجيل الطلب</span><h1>شكراً لك</h1><p>رقم طلبك: <b dir="ltr">{complete.orderNumber}</b>. الدفع عند الاستلام، وسيتم التواصل معك للتأكيد.</p><button className="primary-button" onClick={() => navigate("/")}>العودة إلى الرئيسية</button></div></main>;
-  return <main className="shell section-space checkout-page"><div className="prototype-banner"><ShieldCheck size={22} /><span><b>طلب آمن بالدفع عند الاستلام</b> — يعيد الخادم التحقق من السعر والتوفر قبل حفظ الطلب.</span></div><div className="page-heading align-start"><span>الخطوة الأخيرة</span><h1>معلومات التوصيل</h1></div><div className="checkout-layout"><form className="checkout-form" onSubmit={submitOrder}>{submitError && <div className="policy-warning" role="alert">{submitError}</div>}<div className="form-grid"><label>الاسم الكامل<input required name="name" autoComplete="name" /></label><label>رقم الهاتف<input required name="phone" inputMode="tel" autoComplete="tel" /></label><label>المدينة<input required name="city" autoComplete="address-level2" /></label><label>العنوان<input required name="address" autoComplete="street-address" /></label></div><label>ملاحظات الطلب<textarea name="note" rows="3" /></label><fieldset className="payment-options"><legend>طريقة الدفع</legend><label className="payment-card selected"><input type="radio" name="payment" defaultChecked /><HandCoins size={25} /><span><b>الدفع عند الاستلام</b><small>يؤكد المتجر الطلب قبل الشحن</small></span><Check size={19} /></label><label className="payment-card disabled"><input type="radio" name="payment" disabled /><CreditCard size={25} /><span><b>الدفع الإلكتروني</b><small>غير متاح حالياً</small></span></label></fieldset><label className="terms-check"><input type="checkbox" required /><span>قرأت <Link to="/pages/سياسة-الا-ستبدال" navigate={navigate}>سياسة الاستبدال</Link>.</span></label><button className="primary-button checkout-submit" type="submit" disabled={submitting}>{submitting ? "جارٍ التحقق…" : "تأكيد طلب الدفع عند الاستلام"}</button></form><OrderSummary subtotal={subtotal} navigate={navigate} checkout /></div></main>;
+  if (!items.length && !complete) return <main className="shell section-space"><div className="empty-state"><ShoppingBag size={48} weight="light" /><h1>لا يمكن بدء الطلب</h1><p>{directMode ? "انتهى اختيار الشراء المباشر. عد إلى المنتج وحدد التوليفة من جديد." : "أضف منتجاً متاحاً إلى السلة أولاً."}</p><Link to="/shop" navigate={navigate} className="primary-button">العودة إلى المتجر</Link></div></main>;
+  if (hasUnavailable && !complete) return <main className="shell section-space"><div className="empty-state"><Package size={48} weight="light" /><h1>اختيار غير متوفر</h1><p>لم تعد التوليفة أو الكمية المطلوبة متوفرة. اختر توليفة متاحة قبل متابعة الطلب.</p><Link to={directMode ? productPath(items[0].product) : "/cart"} navigate={navigate} className="primary-button">{directMode ? "العودة إلى المنتج" : "مراجعة السلة"}</Link></div></main>;
+  if (complete) return <main className="shell section-space"><div className="checkout-success"><Check size={34} weight="bold" /><span>تم حفظ الطلب محلياً</span><h1>شكراً لك</h1><p>رقم الطلب التجريبي: <b dir="ltr">{complete.orderNumber}</b>. هذا الاختبار لا يرسل الطلب إلى متجر MELYNE الحقيقي، ولا يبدأ الدفع أو الشحن.</p><button className="primary-button" onClick={() => navigate("/")}>العودة إلى الرئيسية</button></div></main>;
+  return <main className="shell section-space checkout-page"><div className="prototype-banner"><ShieldCheck size={22} /><span><b>طلب محلي تجريبي بالدفع عند الاستلام</b> — يُحفظ الطلب في قاعدة البيانات المحلية فقط، ولا يُرسل إلى المتجر الحقيقي أو خدمة شحن أو دفع.</span></div><div className="page-heading align-start"><span>{directMode ? "شراء مباشر" : "الخطوة الأخيرة"}</span><h1>معلومات التوصيل</h1></div>{directMode && <div className="direct-order-preview"><b>المنتج المختار</b><span>{items[0].product.displayName} · {items[0].variant?.selections.map((selection) => selection.value).join(" · ") || "بدون خيارات"} · الكمية {items[0].quantity}</span></div>}<div className="checkout-layout"><form className="checkout-form" onSubmit={submitOrder}>{submitError && <div className="policy-warning" role="alert">{submitError}</div>}<div className="form-grid"><label>الاسم الكامل<input required name="name" autoComplete="name" /></label><label>رقم الهاتف<input required name="phone" inputMode="tel" autoComplete="tel" /></label><label>المدينة<input required name="city" autoComplete="address-level2" /></label><label>العنوان<input required name="address" autoComplete="street-address" /></label></div><label>ملاحظات الطلب<textarea name="note" rows="3" /></label><fieldset className="payment-options"><legend>طريقة الدفع</legend><label className="payment-card selected"><input type="radio" name="payment" defaultChecked /><HandCoins size={25} /><span><b>الدفع عند الاستلام</b><small>يؤكد المتجر الطلب قبل الشحن</small></span><Check size={19} /></label><label className="payment-card disabled"><input type="radio" name="payment" disabled /><CreditCard size={25} /><span><b>الدفع الإلكتروني</b><small>غير متاح حالياً</small></span></label></fieldset><label className="terms-check"><input type="checkbox" required /><span>قرأت <Link to="/pages/سياسة-الا-ستبدال" navigate={navigate}>سياسة الاستبدال</Link>.</span></label><button className="primary-button checkout-submit" type="submit" disabled={submitting}>{submitting ? "جارٍ التحقق…" : "تأكيد الطلب المحلي التجريبي"}</button></form><OrderSummary subtotal={subtotal} navigate={navigate} checkout /></div></main>;
 }
 
 function PolicyPage({ policy, navigate }) {
@@ -285,7 +325,7 @@ function AppRouter({ route, navigate, ...props }) {
   if (pathname.startsWith("/products/")) { const slug = decodeURIComponent(pathname.slice(10)); const product = props.products.find((entry) => entry.slug === slug); return product ? <ProductPage key={product.id} product={product} navigate={navigate} {...props} /> : <NotFound navigate={navigate} />; }
   if (pathname === "/wishlist") return <WishlistPage navigate={navigate} {...props} />;
   if (pathname === "/cart") return <CartPage navigate={navigate} {...props} />;
-  if (pathname === "/checkout") return <CheckoutPage navigate={navigate} {...props} />;
+  if (pathname === "/checkout") return <CheckoutPage key={route} route={route} navigate={navigate} {...props} />;
   if (pathname.startsWith("/pages/")) { const slug = decodeURIComponent(pathname.slice(7)); const policy = storeData.policies.find((entry) => entry.slug === slug); return policy ? <PolicyPage policy={policy} navigate={navigate} /> : <NotFound navigate={navigate} />; }
   return <NotFound navigate={navigate} />;
 }
@@ -294,11 +334,16 @@ export function App() {
   const [route, navigate] = useRoute();
   const [wishlist, setWishlist] = useStoredState("melyne-wishlist", []);
   const [cart, setCart] = useStoredState("melyne-cart", []);
+  const [directPurchase, setDirectPurchase] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("melyne-direct-purchase")); } catch { return null; }
+  });
   const [panel, setPanel] = useState(null);
   const [toast, setToast] = useState("");
   const [storefront, setStorefront] = useState({ products: [], featuredProducts: [], banners: [], categories: fallbackCategories });
   const [catalogState, setCatalogState] = useState("loading");
   const pathname = route.split("?")[0];
+  const activeProduct = pathname.startsWith("/products/") ? storefront.products.find((entry) => entry.slug === decodeURIComponent(pathname.slice(10))) : null;
+  const generalWhatsAppHref = whatsAppHref(storeData.whatsappSupportNumber, generalWhatsAppMessage);
   useEffect(() => {
     let active = true;
     fetch("/api/public/storefront").then(async (response) => {
@@ -327,11 +372,13 @@ export function App() {
   useEffect(() => { if (!toast) return undefined; const timer = setTimeout(() => setToast(""), 2600); return () => clearTimeout(timer); }, [toast]);
   const toggleWishlist = (productId) => { const exists = wishlist.includes(productId); setWishlist(exists ? wishlist.filter((id) => id !== productId) : [...wishlist, productId]); setToast(exists ? "تمت الإزالة من المفضلة" : "تمت الإضافة إلى المفضلة"); };
   const addToCart = (product, variant, quantity = 1) => {
-    if ((product.variants.length > 0 && !variant) || (variant && variant.availability !== "available") || (!variant && product.availability !== "available")) { setToast("هذه التوليفة غير متوفرة"); return; }
+    if ((product.variants.length > 0 && !variant) || (variant && !variantCanBeBought(variant)) || product.availability !== "available") { setToast("هذه التوليفة غير متوفرة"); return; }
     const key = `${product.id}:${variant?.id || "default"}`; const existing = cart.find((item) => item.key === key);
     const maximum = Number.isFinite(variant?.stockQuantity) && variant.stockQuantity > 0 ? variant.stockQuantity : 99;
     const requested = Math.min(maximum, (existing?.quantity || 0) + quantity);
     setCart(existing ? cart.map((item) => item.key === key ? { ...item, quantity: requested } : item) : [...cart, { key, productId: product.id, variantId: variant?.id || null, quantity: Math.min(maximum, quantity) }]); setToast("تمت الإضافة إلى السلة");
   };
-  return <div className="app-shell"><a href="#main-content" className="skip-link">انتقل إلى المحتوى</a><Header navigate={navigate} cart={cart} wishlist={wishlist} onMenu={() => setPanel("menu")} onSearch={() => setPanel("search")} /><div id="main-content">{catalogState === "loading" ? <main className="shell section-space"><div className="empty-state"><Package size={44}/><h1>جارٍ تحميل المتجر…</h1></div></main> : catalogState === "error" ? <main className="shell section-space"><div className="empty-state"><Package size={44}/><h1>تعذر تحميل الكتالوج</h1><p>لم تتصل الواجهة بقاعدة بيانات MELYNE. حاول مرة أخرى بعد لحظات.</p><button className="primary-button" onClick={() => window.location.reload()}>إعادة المحاولة</button></div></main> : <AppRouter route={route} navigate={navigate} wishlist={wishlist} toggleWishlist={toggleWishlist} cart={cart} setCart={setCart} addToCart={addToCart} products={storefront.products} featuredProducts={storefront.featuredProducts} banners={storefront.banners} categories={storefront.categories} />}</div><Footer navigate={navigate} /><MobilePanel open={Boolean(panel)} type={panel} onClose={() => setPanel(null)} navigate={navigate} />{toast && <div className="toast" role="status"><Check size={18} weight="bold" />{toast}</div>}</div>;
+  const beginBuyNow = (item) => { setDirectPurchase(item); try { sessionStorage.setItem("melyne-direct-purchase", JSON.stringify(item)); } catch { /* in-memory checkout still works */ } navigate("/checkout?buy=1"); };
+  const clearDirectPurchase = () => { setDirectPurchase(null); try { sessionStorage.removeItem("melyne-direct-purchase"); } catch { /* storage unavailable */ } };
+  return <div className="app-shell"><a href="#main-content" className="skip-link">انتقل إلى المحتوى</a><Header navigate={navigate} cart={cart} wishlist={wishlist} onMenu={() => setPanel("menu")} onSearch={() => setPanel("search")} /><div id="main-content">{catalogState === "loading" ? <main className="shell section-space"><div className="empty-state"><Package size={44}/><h1>جارٍ تحميل المتجر…</h1></div></main> : catalogState === "error" ? <main className="shell section-space"><div className="empty-state"><Package size={44}/><h1>تعذر تحميل الكتالوج</h1><p>لم تتصل الواجهة بقاعدة بيانات MELYNE. حاول مرة أخرى بعد لحظات.</p><button className="primary-button" onClick={() => window.location.reload()}>إعادة المحاولة</button></div></main> : <AppRouter route={route} navigate={navigate} wishlist={wishlist} toggleWishlist={toggleWishlist} cart={cart} setCart={setCart} addToCart={addToCart} beginBuyNow={beginBuyNow} directPurchase={directPurchase} clearDirectPurchase={clearDirectPurchase} products={storefront.products} featuredProducts={storefront.featuredProducts} banners={storefront.banners} categories={storefront.categories} />}</div><Footer navigate={navigate} /><MobilePanel open={Boolean(panel)} type={panel} onClose={() => setPanel(null)} navigate={navigate} />{!activeProduct && <WhatsAppLink href={generalWhatsAppHref} />}{toast && <div className="toast" role="status"><Check size={18} weight="bold" />{toast}</div>}</div>;
 }

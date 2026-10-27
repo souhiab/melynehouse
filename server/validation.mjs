@@ -6,6 +6,8 @@ const nullableMoney = money.nullable().optional();
 
 export const loginSchema = z.object({ email: z.email().max(320), password: z.string().min(1).max(1000) }).strict();
 
+export const imageColorSchema = z.object({ colorLabel: z.string().min(1).max(200).nullable() }).strict();
+
 export const variantSchema = z.object({
   id: identifier.optional(),
   name: z.string().trim().min(1).max(500),

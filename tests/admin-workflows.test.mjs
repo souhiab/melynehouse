@@ -96,9 +96,17 @@ test("owner can upload, preview, replace and reorder product images without brea
   const restartedApp=await createApp({db:system.db,config:system.config});
   await request(restartedApp).get(replaced.body.publicUrl).expect(200);
   const added=await agent.post(`/api/admin/products/${product.id}/images`).set("x-csrf-token",csrf).field("altText","صورة إضافية").attach("image",png,{filename:"additional.png",contentType:"image/png"}).expect(201);
+  const colorOption=product.options.find((option)=>/color|colour|لون/i.test(String(option.key||option.name||"")));
+  const colorLabel=colorOption.values[0].label;
+  await agent.put(`/api/admin/products/${product.id}/images/${added.body.id}/color`).set("x-csrf-token",csrf).send({colorLabel}).expect(200);
+  await agent.put(`/api/admin/products/${product.id}/images/${added.body.id}/color`).set("x-csrf-token",csrf).send({colorLabel:"not-a-product-color"}).expect(400);
+  const linkedImage=product.images.find((image)=>product.variants.some((variant)=>variant.imageId===image.id));
+  const linkedColor=product.variants.find((variant)=>variant.imageId===linkedImage.id).selections.find((selection)=>selection.option===colorOption.name).value;
+  const otherColor=colorOption.values.find((value)=>value.label!==linkedColor).label;
+  await agent.put(`/api/admin/products/${product.id}/images/${linkedImage.id}/color`).set("x-csrf-token",csrf).send({colorLabel:otherColor}).expect(409);
   admin=(await agent.get("/api/admin/products").expect(200)).body;const updated=admin.products.find((item)=>item.id===product.id);const ordered=[added.body.id,...updated.images.filter((item)=>item.id!==added.body.id).map((item)=>item.id)];
   await agent.put(`/api/admin/products/${product.id}/image-order`).set("x-csrf-token",csrf).send({orderedImageIds:ordered}).expect(204);
-  const publicData=(await agent.get("/api/public/storefront").expect(200)).body;const publicProduct=publicData.products.find((item)=>item.id===product.id);assert.equal(publicProduct.images[0].id,added.body.id);assert.ok(publicProduct.variants.every((variant)=>!variant.imageId||publicProduct.images.some((image)=>image.id===variant.imageId)));
+  const publicData=(await agent.get("/api/public/storefront").expect(200)).body;const publicProduct=publicData.products.find((item)=>item.id===product.id);assert.equal(publicProduct.images[0].id,added.body.id);assert.equal(publicProduct.images[0].colorLabel,colorLabel);assert.ok(publicProduct.variants.every((variant)=>!variant.imageId||publicProduct.images.some((image)=>image.id===variant.imageId)));
   const backup=await createUploadBackup(system.config);assert.ok(backup.manifest.fileCount>=2);assert.equal(backup.manifest.files.every((file)=>/^[a-f0-9]{64}$/.test(file.sha256)),true);
 });
 

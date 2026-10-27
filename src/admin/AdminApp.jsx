@@ -11,6 +11,7 @@ import {
   Storefront,
   UploadSimple,
 } from "@phosphor-icons/react";
+import { colorOptionFor, colorOfVariant } from "../product-colors.js";
 import "./admin.css";
 
 const csrfToken = () => decodeURIComponent(
@@ -235,8 +236,8 @@ function ProductEditor({ product, categories, onSaved, onCancel }) {
           <legend>التوليفات ({form.variants.length})</legend>
           <div className="variant-table" role="region" aria-label="توليفات المنتج" tabIndex="0">
             <table>
-              <thead><tr><th>متاح</th><th>التوليفة</th><th>السعر</th><th>السعر السابق</th><th>المخزون</th></tr></thead>
-              <tbody>{form.variants.map((variant, index) => <tr key={variant.id || selectionSignature(variant.selections)}><td><input type="checkbox" checked={variant.available} onChange={(event) => updateVariant(index, { available: event.target.checked })} aria-label={`توفر ${variant.name}`} /></td><td>{variant.name}</td><td><input type="number" min="0" step="0.01" value={variant.priceMad} onChange={(event) => updateVariant(index, { priceMad: event.target.value })} aria-label={`سعر ${variant.name}`} /></td><td><input type="number" min="0" step="0.01" value={variant.comparisonPriceMad ?? ""} onChange={(event) => updateVariant(index, { comparisonPriceMad: event.target.value })} aria-label={`السعر السابق ${variant.name}`} /></td><td><input type="number" min="0" step="1" value={variant.stockQuantity ?? ""} onChange={(event) => updateVariant(index, { stockQuantity: event.target.value })} placeholder="غير محدد" aria-label={`مخزون ${variant.name}`} /></td></tr>)}</tbody>
+              <thead><tr><th>متاح</th><th>التوليفة</th><th>السعر</th><th>السعر السابق</th><th>المخزون</th><th>صورة التوليفة</th></tr></thead>
+              <tbody>{form.variants.map((variant, index) => <tr key={variant.id || selectionSignature(variant.selections)}><td><input type="checkbox" checked={variant.available} onChange={(event) => updateVariant(index, { available: event.target.checked })} aria-label={`توفر ${variant.name}`} /></td><td>{variant.name}</td><td><input type="number" min="0" step="0.01" value={variant.priceMad} onChange={(event) => updateVariant(index, { priceMad: event.target.value })} aria-label={`سعر ${variant.name}`} /></td><td><input type="number" min="0" step="0.01" value={variant.comparisonPriceMad ?? ""} onChange={(event) => updateVariant(index, { comparisonPriceMad: event.target.value })} aria-label={`السعر السابق ${variant.name}`} /></td><td><input type="number" min="0" step="1" value={variant.stockQuantity ?? ""} onChange={(event) => updateVariant(index, { stockQuantity: event.target.value })} placeholder="غير محدد" aria-label={`مخزون ${variant.name}`} /></td><td><select value={variant.imageId || ""} onChange={(event) => updateVariant(index, { imageId: event.target.value || null })} aria-label={`صورة ${variant.name}`}><option value="">بلا صورة</option>{product?.images.map((image, imageIndex) => <option key={image.id} value={image.id}>الصورة {imageIndex + 1}{image.colorLabel ? ` — ${image.colorLabel}` : ""}</option>)}</select></td></tr>)}</tbody>
             </table>
           </div>
         </fieldset>
@@ -249,6 +250,7 @@ function ProductEditor({ product, categories, onSaved, onCancel }) {
 function ImageManager({ product, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const colorOption = colorOptionFor(product);
   const upload = async (event, imageId = null) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -272,11 +274,27 @@ function ImageManager({ product, onChanged }) {
     await api(`/api/admin/products/${product.id}/image-order`, { method: "PUT", body: JSON.stringify({ orderedImageIds: images.map((image) => image.id) }) });
     await onChanged();
   };
+  const assignColor = async (imageId, colorLabel) => {
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/admin/products/${product.id}/images/${imageId}/color`, { method: "PUT", body: JSON.stringify({ colorLabel: colorLabel || null }) });
+      await onChanged();
+    } catch (exception) {
+      setError(exception.message);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="image-manager">
       <h3>الصور وترتيبها</h3>
+      {colorOption && <p>صور الألوان المرتبطة بالتوليفات تُحدَّد من جدول التوليفات. اربط صور المعرض الإضافية بلونها هنا.</p>}
       {error && <div className="owner-error" role="alert">{error}</div>}
-      <div className="image-list">{product.images.map((image, index) => <article key={image.id}><img src={image.localOptimizedPath} alt={image.altText || product.displayName} /><MoveButtons index={index} count={product.images.length} label={`الصورة ${index + 1}`} onMove={move} /><label className="upload-button"><UploadSimple /> استبدال<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => upload(event, image.id)} disabled={busy} /></label></article>)}</div>
+      <div className="image-list">{product.images.map((image, index) => {
+        const linkedColors = [...new Set(product.variants.filter((variant) => variant.imageId === image.id).map((variant) => colorOfVariant(variant, colorOption)).filter(Boolean))];
+        return <article key={image.id}><img src={image.localOptimizedPath} alt={image.altText || product.displayName} />{colorOption && <label className="image-color-field">لون الصورة<select value={linkedColors[0] || image.colorLabel || ""} onChange={(event) => assignColor(image.id, event.target.value)} disabled={busy || linkedColors.length > 0} aria-label={`لون الصورة ${index + 1}`}><option value="">غير محدد</option>{colorOption.values.map((value) => <option key={value.id} value={value.label}>{value.label}</option>)}</select>{linkedColors.length > 0 && <small>مرتبط بالتوليفات</small>}</label>}<MoveButtons index={index} count={product.images.length} label={`الصورة ${index + 1}`} onMove={move} /><label className="upload-button"><UploadSimple /> استبدال<input type="file" accept="image/png,image/webp,image/jpeg" onChange={(event) => upload(event, image.id)} disabled={busy} /></label></article>;
+      })}</div>
       <label className="upload-button add"><Image /> إضافة صورة<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => upload(event)} disabled={busy} /></label>
     </div>
   );

@@ -1,0 +1,9 @@
+# WhatsApp support and color photos
+
+The public storefront uses `whatsappSupportNumber` in `data/store.json` for both WhatsApp buttons. The value must contain only an international phone number with country code and no `+` sign. On 2026-10-27, the store's existing public `https://wa.link/9ydk6t` link redirected to `https://api.whatsapp.com/send?phone=212776253589`; that is the configured number. The redirect establishes the store's intended WhatsApp contact, but only the store owner can confirm that the account is currently receiving messages.
+
+The floating button appears on public pages. Product pages also show a contact link beside the purchase controls. Both product links use the same generated Arabic message and update with the selected color and size. Imported products use their verified `canonicalUrl` on `https://melynehouse.com`; local or newly created products without a verified public URL omit the URL line until published. No localhost link is sent to WhatsApp.
+
+Each imported color variant already has an `imageId` referring to a real product image. The storefront uses those links for color thumbnails and the selected color's gallery. Additional gallery photos can be assigned in Owner → Products → Edit → Images. The color assignment is stored in the image's existing `source_metadata.colorLabel` field, so no image files or product records are replaced. Variant-linked primary images are edited in the product's variant table; gallery photos not linked to a variant can be assigned by the image's color selector.
+
+Only explicitly linked photos appear in a selected color's gallery. Unassigned photos remain in the database and owner editor. If no photo is linked to a color, the storefront falls back to the original gallery and a text color choice. The owner should review unassigned gallery photos and link them to the correct colors where appropriate.

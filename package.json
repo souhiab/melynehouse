@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "test:sites": "node --test tests/sites-worker.test.mjs",
     "test:admin": "node --test tests/admin-*.test.mjs",
-    "test": "npm run test:admin && npm run test:sites",
+    "test": "npm run test:admin && node --test tests/whatsapp-color.test.mjs tests/purchase.test.mjs && npm run test:sites",
     "validate:catalog": "node scripts/validate-catalog.mjs",
     "local:env": "node scripts/setup-local-env.mjs",
     "db:local:setup": "node --env-file=.env scripts/setup-local-postgres.mjs",

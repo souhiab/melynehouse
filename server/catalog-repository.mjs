@@ -28,6 +28,7 @@ export async function loadProducts(db, { includeUnpublished = false } = {}) {
     images: imageResult.rows.filter((item) => item.product_id === row.id).map((item) => ({
       id: item.id, localOptimizedPath: item.public_url, localOriginalPath: item.original_public_url || item.public_url,
       sourceUrl: item.source_metadata?.sourceUrl || item.public_url, altText: item.alt_text, order: item.sort_position,
+      colorLabel: item.source_metadata?.colorLabel || null,
     })),
     variants: variantResult.rows.filter((item) => item.product_id === row.id).map((item) => ({
       id: item.id, name: item.name, selections: item.selections || [],
