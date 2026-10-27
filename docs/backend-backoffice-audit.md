@@ -1,5 +1,7 @@
 # MELYNE House has a working local backend, but not a production order operation
 
+> Historical baseline before Phase 1 order/inventory work. See [Phase 1 implementation](order-inventory-phase1.md) for the current local stock-reservation, idempotency, and cancellation behavior.
+
 Audit date: 2026-10-27. Scope: repository inspection, read-only queries against the configured local PostgreSQL database, and unauthenticated HTTP `GET` checks. No customer record, credential value, or order payload was read or changed. No browser walkthrough, write-path test, penetration test, backup restore, or production environment was verified in this audit.
 
 ## Executive summary

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowLeft, ArrowRight, CaretDown, Check, CreditCard, EnvelopeSimple,
   FacebookLogo, HandCoins, Heart, InstagramLogo, List, MagnifyingGlass,
@@ -62,7 +62,8 @@ function Link({ to, navigate, children, className, ariaLabel, onClick }) {
 const formatPrice = (value) => value == null ? "السعر غير متوفر" : money.format(value);
 const productPath = (product) => `/products/${encodeURIComponent(product.slug)}`;
 const getProduct = (products, id) => products.find((product) => product.id === id);
-const variantCanBeBought = (variant) => variant.availability === "available" && variant.stockQuantity !== 0;
+const variantCanBeBought = (variant) => variant.availability === "available" && Number.isInteger(variant.stockQuantity) && variant.stockQuantity > 0;
+const productHasStock = (product) => product.availability === "available" && product.variants.some(variantCanBeBought);
 const availableVariant = (product) => product.variants.find(variantCanBeBought) || null;
 const quantityFor = (items) => items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -142,7 +143,7 @@ function Price({ product, variant, compact = false }) {
 }
 
 function ProductCard({ product, navigate, wished, toggleWishlist }) {
-  const unavailable = product.availability !== "available";
+  const unavailable = !productHasStock(product);
   const image = product.images[0]?.localOptimizedPath || product.images[0]?.localOriginalPath;
   return <article className="product-card"><div className="product-image-wrap"><Link to={productPath(product)} navigate={navigate} ariaLabel={product.name}><img src={image} alt={product.name} loading="lazy" /></Link>{product.price.comparison && <span className="sale-badge">خصم</span>}{unavailable && <span className="stock-badge">غير متوفر</span>}<button className={`wishlist-button ${wished ? "active" : ""}`} onClick={() => toggleWishlist(product.id)} aria-label={wished ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}><Heart size={20} weight={wished ? "fill" : "regular"} /></button><Link to={productPath(product)} navigate={navigate} className="quick-view" ariaLabel={`اختيار خيارات ${product.displayName}`}><ShoppingBag size={21} weight="light" /></Link></div><div className="product-card-body"><div><Link to={productPath(product)} navigate={navigate} className="product-name">{product.displayName}</Link><Price product={product} compact /></div></div></article>;
 }
@@ -185,7 +186,7 @@ function CatalogPage({ slug, navigate, wishlist, toggleWishlist, products, categ
     const result = base.filter((product) => {
       const searchable = `${product.name} ${product.displayName} ${product.sku || ""}`.toLocaleLowerCase("ar");
       if (normalized && !searchable.includes(normalized)) return false;
-      if (availableOnly && product.availability !== "available") return false;
+      if (availableOnly && !productHasStock(product)) return false;
       if (sizes.length && !sizes.some((size) => getOptions(product, (option) => option.key === "size" || /size|taille|مقاس/i.test(option.name || "")).includes(size))) return false;
       if (colors.length && !colors.some((color) => getOptions(product, (option) => option.key !== "size" && !/size|taille|مقاس/i.test(option.name || "")).includes(color))) return false;
       return true;
@@ -215,7 +216,7 @@ function ProductPage({ product, navigate, wishlist, toggleWishlist, addToCart, b
   const selectedColor = colorOption ? selected[colorOption.name] : null;
   const galleryImages = imagesForColor(product, selectedColor);
   const matchedVariant = product.variants.find((variant) => variant.selections.every((selection) => selected[selection.option] === selection.value));
-  const canBuy = product.availability === "available" && (matchedVariant ? variantCanBeBought(matchedVariant) : product.variants.length === 0);
+  const canBuy = product.availability === "available" && Boolean(matchedVariant && variantCanBeBought(matchedVariant));
   const maximumQuantity = Number.isFinite(matchedVariant?.stockQuantity) && matchedVariant.stockQuantity > 0 ? matchedVariant.stockQuantity : 99;
   const selectValue = (optionName, value) => {
     const next = { ...selected, [optionName]: value };
@@ -246,7 +247,7 @@ function ProductPage({ product, navigate, wishlist, toggleWishlist, addToCart, b
       <div className={`availability-line ${canBuy ? "available" : "unavailable"}`}><span />{canBuy ? `متوفر${matchedVariant?.stockQuantity != null ? ` — ${matchedVariant.stockQuantity} في المخزون` : ""}` : "هذه التوليفة غير متوفرة"}</div>
       <div className="purchase-controls"><div className="quantity-control"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="تقليل الكمية" disabled={quantity <= 1}><Minus size={16} /></button><span aria-live="polite">{quantity}</span><button onClick={() => setQuantity(Math.min(maximumQuantity, quantity + 1))} aria-label="زيادة الكمية" disabled={!canBuy || quantity >= maximumQuantity}><Plus size={16} /></button></div><span>الكمية</span></div>
       {purchaseError && <p className="purchase-error" role="alert">{purchaseError}</p>}
-      <button className="primary-button buy-now-button" type="button" onClick={buyNow} aria-busy={isNavigating} disabled={isNavigating || product.availability !== "available" || (matchedVariant && !variantCanBeBought(matchedVariant))}><Lightning size={21} weight="fill" /> {isNavigating ? "جارٍ الانتقال…" : "اشترِ الآن"}</button>
+      <button className="primary-button buy-now-button" type="button" onClick={buyNow} aria-busy={isNavigating} disabled={isNavigating || product.availability !== "available" || product.variants.length === 0 || (matchedVariant && !variantCanBeBought(matchedVariant))}><Lightning size={21} weight="fill" /> {isNavigating ? "جارٍ الانتقال…" : "اشترِ الآن"}</button>
       <div className="purchase-secondary"><button className="add-button" type="button" disabled={!canBuy} onClick={() => addToCart(product, matchedVariant, quantity)}><ShoppingBag size={20} /> {canBuy ? "أضف إلى السلة" : "غير متوفر"}</button><button className={`detail-wish ${wishlist.includes(product.id) ? "active" : ""}`} onClick={() => toggleWishlist(product.id)} aria-label={wishlist.includes(product.id) ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}><Heart size={23} weight={wishlist.includes(product.id) ? "fill" : "regular"} /></button></div>
       <WhatsAppLink href={whatsAppProductHref} product />
       <div className="prototype-note"><ShieldCheck size={20} /><span><b>واجهة متجر تجريبية</b> — السلة ومسار الطلب يعملان محلياً، ولا يتم إرسال طلب حقيقي.</span></div>
@@ -261,7 +262,7 @@ function WishlistPage({ wishlist, navigate, toggleWishlist, products }) {
 }
 
 function cartDetails(cart, products) { return cart.map((item) => ({ ...item, product: getProduct(products, item.productId), variant: getProduct(products, item.productId)?.variants.find((variant) => variant.id === item.variantId) })).filter((item) => item.product); }
-function cartItemUnavailable(item) { return item.product.availability !== "available" || (item.product.variants.length > 0 && (!item.variant || !variantCanBeBought(item.variant))) || (item.variant?.stockQuantity != null && item.quantity > item.variant.stockQuantity); }
+function cartItemUnavailable(item) { return item.product.availability !== "available" || !item.variant || !variantCanBeBought(item.variant) || item.quantity > item.variant.stockQuantity; }
 
 function OrderSummary({ subtotal, navigate, checkout = false, blocked = false }) {
   return <aside className="order-summary"><h2>ملخص الطلب</h2><div><span>المجموع الفرعي</span><strong>{formatPrice(subtotal)}</strong></div><div><span>التوصيل</span><b>يؤكد عند الطلب</b></div><div className="summary-total"><span>المجموع</span><strong>{formatPrice(subtotal)}</strong></div><p className="prototype-label">{blocked ? "تحتوي السلة على اختيار غير متوفر. احذفه قبل المتابعة." : "نموذج أولي — لا يتم تحصيل أي مبلغ."}</p>{!checkout && <button className="primary-button" disabled={blocked} onClick={() => navigate("/checkout")}>متابعة إتمام الطلب <ArrowLeft size={18} /></button>}<Link to="/shop" navigate={navigate} className="continue-link"><ArrowRight size={16} /> متابعة التسوق</Link></aside>;
@@ -290,14 +291,31 @@ function CheckoutPage({ cart, setCart, navigate, products, route, directPurchase
   const hasUnavailable = items.some(cartItemUnavailable);
   const [complete, setComplete] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [submitError, setSubmitError] = useState("");
   const submitOrder = async (event) => {
-    event.preventDefault(); setSubmitting(true); setSubmitError("");
+    event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true; setSubmitting(true); setSubmitError("");
     const form = new FormData(event.currentTarget);
     try {
-      const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ customer: { name: form.get("name"), phone: form.get("phone"), city: form.get("city"), address: form.get("address") }, note: form.get("note") || "", items: orderLines.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity })) }) });
-      const body = await response.json(); if (!response.ok) throw new Error(body.error || "تعذر تسجيل الطلب"); setComplete(body); if (directMode) clearDirectPurchase(); else setCart([]);
-    } catch (error) { setSubmitError(error.message); } finally { setSubmitting(false); }
+      const payload = JSON.stringify({ customer: { name: form.get("name"), phone: form.get("phone"), city: form.get("city"), address: form.get("address") }, note: form.get("note") || "", items: orderLines.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity })) });
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+      const fingerprint = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      let saved = null;
+      try { saved = JSON.parse(sessionStorage.getItem("melyne-checkout-request") || "null"); }
+      catch { sessionStorage.removeItem("melyne-checkout-request"); }
+      const key = saved?.fingerprint === fingerprint ? saved.key : crypto.randomUUID();
+      sessionStorage.setItem("melyne-checkout-request", JSON.stringify({ fingerprint, key }));
+      const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json", "idempotency-key": key }, body: payload });
+      const body = await response.json();
+      if (!response.ok) {
+        if (response.status < 500) sessionStorage.removeItem("melyne-checkout-request");
+        throw new Error(body.error || "تعذر تسجيل الطلب");
+      }
+      sessionStorage.removeItem("melyne-checkout-request");
+      setComplete(body); if (directMode) clearDirectPurchase(); else setCart([]);
+    } catch (error) { setSubmitError(error.message); } finally { submittingRef.current = false; setSubmitting(false); }
   };
   if (!items.length && !complete) return <main className="shell section-space"><div className="empty-state"><ShoppingBag size={48} weight="light" /><h1>لا يمكن بدء الطلب</h1><p>{directMode ? "انتهى اختيار الشراء المباشر. عد إلى المنتج وحدد التوليفة من جديد." : "أضف منتجاً متاحاً إلى السلة أولاً."}</p><Link to="/shop" navigate={navigate} className="primary-button">العودة إلى المتجر</Link></div></main>;
   if (hasUnavailable && !complete) return <main className="shell section-space"><div className="empty-state"><Package size={48} weight="light" /><h1>اختيار غير متوفر</h1><p>لم تعد التوليفة أو الكمية المطلوبة متوفرة. اختر توليفة متاحة قبل متابعة الطلب.</p><Link to={directMode ? productPath(items[0].product) : "/cart"} navigate={navigate} className="primary-button">{directMode ? "العودة إلى المنتج" : "مراجعة السلة"}</Link></div></main>;
@@ -365,7 +383,7 @@ export function App() {
     document.querySelectorAll('script[data-product-schema]').forEach((node) => node.remove());
     if (product) {
       const schema = document.createElement("script"); schema.type = "application/ld+json"; schema.dataset.productSchema = "true";
-      schema.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "Product", name: product.name, sku: product.sku || undefined, image: product.images.map((image) => image.sourceUrl).filter(Boolean), description: product.description || undefined, brand: product.brand?.name ? { "@type": "Brand", name: product.brand.name } : undefined, offers: { "@type": "Offer", priceCurrency: "MAD", price: product.price.current, availability: product.availability === "available" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", url: product.canonicalUrl } });
+      schema.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "Product", name: product.name, sku: product.sku || undefined, image: product.images.map((image) => image.sourceUrl).filter(Boolean), description: product.description || undefined, brand: product.brand?.name ? { "@type": "Brand", name: product.brand.name } : undefined, offers: { "@type": "Offer", priceCurrency: "MAD", price: product.price.current, availability: productHasStock(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", url: product.canonicalUrl } });
       document.head.appendChild(schema);
     }
   }, [pathname, storefront.products]);

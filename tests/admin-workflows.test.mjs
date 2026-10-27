@@ -58,22 +58,22 @@ test("banner publishing, ordering and archival are reflected publicly", async (t
 test("COD submission revalidates server price and availability and keeps customer data private", async (t) => {
   const system = await setupTestSystem(); t.after(async()=>{await system.db.end();await system.cleanup()});
   const catalog=(await request(system.app).get("/api/public/storefront").expect(200)).body;
-  const product=catalog.products.find((entry)=>entry.variants.some((variant)=>variant.availability==="available")); const variant=product.variants.find((entry)=>entry.availability==="available");
-  const created=await request(system.app).post("/api/orders").send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},note:"",items:[{productId:product.id,variantId:variant.id,quantity:2}]}).expect(201);
+  const product=catalog.products.find((entry)=>entry.variants.some((variant)=>variant.availability==="available" && variant.stockQuantity>=2)); const variant=product.variants.find((entry)=>entry.availability==="available" && entry.stockQuantity>=2);
+  const created=await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},note:"",items:[{productId:product.id,variantId:variant.id,quantity:2}]}).expect(201);
   assert.equal(created.body.totalMad,variant.price.current*2);
-  await request(system.app).post("/api/orders").send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,quantity:1}]}).expect(409);
+  await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,quantity:1}]}).expect(409);
   const publicAgain=await request(system.app).get("/api/public/storefront").expect(200); assert.equal(JSON.stringify(publicAgain.body).includes("0600000000"),false);
   const {agent}=await authenticated(system); const orders=await agent.get("/api/admin/orders").expect(200); assert.equal(orders.body.orders[0].customer.phone,"0600000000");
   await system.db.query("UPDATE product_variants SET available=false WHERE id=$1",[variant.id]);
-  await request(system.app).post("/api/orders").send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(409);
+  await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(409);
 });
 
 test("COD order copy is signed server-side and records Google Sheet synchronization status", async (t) => {
   const calls=[];const secret="sheet-test-secret";
   const system=await setupTestSystem({configOverrides:{googleSheetsWebhookUrl:"https://sheets.example.test/orders",googleSheetsWebhookSecret:secret},fetchImpl:async(url,options)=>{calls.push({url,options});return {ok:true,status:200}}});
   t.after(async()=>{await system.db.end();await system.cleanup()});
-  const catalog=(await request(system.app).get("/api/public/storefront").expect(200)).body;const product=catalog.products.find((entry)=>entry.variants.some((variant)=>variant.availability==="available"));const variant=product.variants.find((entry)=>entry.availability==="available");
-  const created=await request(system.app).post("/api/orders").send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(201);
+  const catalog=(await request(system.app).get("/api/public/storefront").expect(200)).body;const product=catalog.products.find((entry)=>entry.variants.some((variant)=>variant.availability==="available" && variant.stockQuantity>=1));const variant=product.variants.find((entry)=>entry.availability==="available" && entry.stockQuantity>=1);
+  const created=await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(201);
   assert.equal(created.body.sheetSyncStatus,"synced");assert.equal(calls.length,1);assert.equal(calls[0].url,"https://sheets.example.test/orders");
   const expected=`sha256=${crypto.createHmac("sha256",secret).update(calls[0].options.body).digest("hex")}`;assert.equal(calls[0].options.headers["x-melyne-signature"],expected);
   const row=await system.db.query("SELECT sheet_sync_status,sheet_synced_at FROM orders WHERE id=$1",[created.body.id]);assert.equal(row.rows[0].sheet_sync_status,"synced");assert.ok(row.rows[0].sheet_synced_at);

@@ -5,7 +5,7 @@ import { checkoutLines, validateDirectPurchase } from "../src/purchase.js";
 
 const products = JSON.parse(fs.readFileSync(new URL("../data/products.json", import.meta.url), "utf8")).products;
 const product = products.find((entry) => entry.variants.some((variant) => variant.availability === "available"));
-const available = product.variants.find((variant) => variant.availability === "available" && variant.stockQuantity !== 0);
+const available = product.variants.find((variant) => variant.availability === "available" && variant.stockQuantity > 0);
 const selected = Object.fromEntries(available.selections.map((selection) => [selection.option, selection.value]));
 
 test("Buy Now keeps the exact variant and quantity separate from the cart", () => {
@@ -31,4 +31,9 @@ test("Buy Now asks for missing options and rejects unavailable selections", () =
   }
   assert.match(validateDirectPurchase(product, selected, 100).error, /الكمية/);
   if (available.stockQuantity != null) assert.match(validateDirectPurchase(product, selected, available.stockQuantity + 1).error, /الكمية/);
+});
+
+test("Buy Now rejects stock whose quantity is unknown", () => {
+  const unverified = { ...product, variants: product.variants.map((variant) => variant.id === available.id ? { ...variant, stockQuantity: null } : variant) };
+  assert.ok(validateDirectPurchase(unverified, selected, 1).error);
 });

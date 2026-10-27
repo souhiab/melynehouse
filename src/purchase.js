@@ -5,11 +5,11 @@ export function validateDirectPurchase(product, selected, quantity) {
     (selection) => selected[selection.option] === selection.value,
   ));
   if (product.availability !== "available" ||
-      (product.variants.length > 0 && (!variant || variant.availability !== "available" || variant.stockQuantity === 0))) {
+      !variant || variant.availability !== "available" || !Number.isInteger(variant.stockQuantity) || variant.stockQuantity <= 0) {
     return { error: "هذه التوليفة غير متوفرة حالياً.", item: null };
   }
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99 ||
-      (variant?.stockQuantity != null && quantity > variant.stockQuantity)) {
+      quantity > variant.stockQuantity) {
     return { error: "الكمية المطلوبة غير متوفرة.", item: null };
   }
   return { error: null, item: {
