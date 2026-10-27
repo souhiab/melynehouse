@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { transaction } from "./db.mjs";
+import { sanitizeProductHtml } from "./product-html.mjs";
 
 const numberOrNull = (value) => value == null ? null : Number(value);
 
@@ -19,7 +20,16 @@ export async function loadProducts(db, { includeUnpublished = false } = {}) {
   return productResult.rows.map((row) => ({
     ...(row.source_metadata || {}),
     id: row.id, sku: row.sku, slug: row.slug, name: row.original_name, displayName: row.display_name,
-    description: row.description, descriptionHtml: row.description_html,
+    description: row.description, descriptionHtml: sanitizeProductHtml(row.description_html),
+    shortDescription: row.short_description, tags: row.tags || [],
+    brandName: row.brand_name, modelName: row.model_name,
+    badgeText: row.badge_text, badgeColor: row.badge_color,
+    seoTitle: row.seo_title, metaDescription: row.meta_description,
+    ...(includeUnpublished ? {
+      costPriceMad: numberOrNull(row.cost_price_mad), supplierName: row.supplier_name,
+      weightKg: numberOrNull(row.weight_kg), widthCm: numberOrNull(row.width_cm),
+      heightCm: numberOrNull(row.height_cm), depthCm: numberOrNull(row.depth_cm),
+    } : {}),
     price: { current: Number(row.price_mad), comparison: numberOrNull(row.comparison_price_mad), currency: "MAD" },
     availability: row.availability, status: row.status, order: row.category_sort_position,
     featured: row.featured, featuredOrder: row.featured_sort_position, options: row.options || [],
@@ -49,10 +59,10 @@ export async function saveProduct(db, input, productId = input.id || crypto.rand
       featuredPosition = existing.rows[0]?.featured_sort_position;
       if (featuredPosition == null) featuredPosition = Number((await client.query("SELECT COALESCE(MAX(featured_sort_position),0)+1 AS position FROM products WHERE archived_at IS NULL")).rows[0].position);
     }
-    await client.query(`INSERT INTO products(id,sku,slug,original_name,display_name,description,description_html,price_mad,comparison_price_mad,availability,status,category_sort_position,featured,featured_sort_position,options,archived_at,updated_at)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,now())
-      ON CONFLICT(id) DO UPDATE SET sku=EXCLUDED.sku,slug=EXCLUDED.slug,original_name=EXCLUDED.original_name,display_name=EXCLUDED.display_name,description=EXCLUDED.description,description_html=EXCLUDED.description_html,price_mad=EXCLUDED.price_mad,comparison_price_mad=EXCLUDED.comparison_price_mad,availability=EXCLUDED.availability,status=EXCLUDED.status,featured=EXCLUDED.featured,featured_sort_position=EXCLUDED.featured_sort_position,options=EXCLUDED.options,archived_at=EXCLUDED.archived_at,updated_at=now()`,
-      [productId,input.sku||null,input.slug,input.originalName,input.displayName,input.description||null,input.descriptionHtml||null,input.priceMad,input.comparisonPriceMad??null,input.availability,input.status,Number(next.category_sort_position||next.position),isFeatured,featuredPosition,JSON.stringify(input.options||[]),input.status==="archived"?new Date():null]);
+    await client.query(`INSERT INTO products(id,sku,slug,original_name,display_name,description,description_html,short_description,cost_price_mad,tags,brand_name,model_name,supplier_name,badge_text,badge_color,seo_title,meta_description,weight_kg,width_cm,height_cm,depth_cm,price_mad,comparison_price_mad,availability,status,category_sort_position,featured,featured_sort_position,options,archived_at,updated_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,now())
+      ON CONFLICT(id) DO UPDATE SET sku=EXCLUDED.sku,slug=EXCLUDED.slug,original_name=EXCLUDED.original_name,display_name=EXCLUDED.display_name,description=EXCLUDED.description,description_html=EXCLUDED.description_html,short_description=EXCLUDED.short_description,cost_price_mad=EXCLUDED.cost_price_mad,tags=EXCLUDED.tags,brand_name=EXCLUDED.brand_name,model_name=EXCLUDED.model_name,supplier_name=EXCLUDED.supplier_name,badge_text=EXCLUDED.badge_text,badge_color=EXCLUDED.badge_color,seo_title=EXCLUDED.seo_title,meta_description=EXCLUDED.meta_description,weight_kg=EXCLUDED.weight_kg,width_cm=EXCLUDED.width_cm,height_cm=EXCLUDED.height_cm,depth_cm=EXCLUDED.depth_cm,price_mad=EXCLUDED.price_mad,comparison_price_mad=EXCLUDED.comparison_price_mad,availability=EXCLUDED.availability,status=EXCLUDED.status,featured=EXCLUDED.featured,featured_sort_position=EXCLUDED.featured_sort_position,options=EXCLUDED.options,archived_at=EXCLUDED.archived_at,updated_at=now()`,
+      [productId,input.sku||null,input.slug,input.originalName,input.displayName,input.description||null,sanitizeProductHtml(input.descriptionHtml),input.shortDescription||null,input.costPriceMad??null,JSON.stringify(input.tags||[]),input.brandName||null,input.modelName||null,input.supplierName||null,input.badgeText||null,input.badgeColor||null,input.seoTitle||null,input.metaDescription||null,input.weightKg??null,input.widthCm??null,input.heightCm??null,input.depthCm??null,input.priceMad,input.comparisonPriceMad??null,input.availability,input.status,Number(next.category_sort_position||next.position),isFeatured,featuredPosition,JSON.stringify(input.options||[]),input.status==="archived"?new Date():null]);
     const retainedCategoryIds = [];
     for (const slug of input.categorySlugs) {
       const category = await client.query("SELECT id FROM categories WHERE slug=$1", [slug]);

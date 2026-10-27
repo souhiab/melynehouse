@@ -21,15 +21,15 @@ test("authenticated owner can create, edit, reorder and recoverably archive a pr
     const [admin, publicCatalog] = await Promise.all([agent.get("/api/admin/products").expect(200), agent.get("/api/public/storefront").expect(200)]);
     return deriveProductStats(admin.body.products, publicCatalog.body.products);
   };
-  assert.deepEqual(await metrics(), { total: 34, published: 34, draft: null, visible: 34 });
+  assert.deepEqual(await metrics(), { total: 34, published: 34, draft: 0, visible: 34, variable: 34 });
   const payload = { sku:"TEST-1",slug:"test-owner-product",originalName:"منتج اختباري",displayName:"منتج اختباري",description:"وصف",descriptionHtml:null,priceMad:199,comparisonPriceMad:249,availability:"available",status:"published",categorySlugs:["kids"],options:[],variants:[],featured:false };
   const created = await agent.post("/api/admin/products").set("x-csrf-token",csrf).send(payload).expect(201);
-  assert.deepEqual(await metrics(), { total: 35, published: 35, draft: null, visible: 35 });
+  assert.deepEqual(await metrics(), { total: 35, published: 35, draft: 0, visible: 35, variable: 34 });
   await agent.put(`/api/admin/products/${created.body.id}`).set("x-csrf-token",csrf).send({...payload,displayName:"منتج معدل",priceMad:189}).expect(200);
   let publicData = await agent.get("/api/public/storefront").expect(200);
   assert.equal(publicData.body.products.find((product)=>product.id===created.body.id).displayName,"منتج معدل");
   await agent.put(`/api/admin/products/${created.body.id}`).set("x-csrf-token",csrf).send({...payload,displayName:"منتج معدل",priceMad:189,status:"hidden"}).expect(200);
-  assert.deepEqual(await metrics(), { total: 35, published: 34, draft: null, visible: 34 });
+  assert.deepEqual(await metrics(), { total: 35, published: 34, draft: 0, visible: 34, variable: 34 });
   publicData=await agent.get("/api/public/storefront").expect(200);assert.equal(publicData.body.products.some((product)=>product.id===created.body.id),false);
   await agent.put(`/api/admin/products/${created.body.id}`).set("x-csrf-token",csrf).send({...payload,displayName:"منتج معدل",priceMad:189,status:"published"}).expect(200);
   const kids = publicData.body.products.filter((product)=>product.categories.some((category)=>category.slug==="kids"));
@@ -38,7 +38,7 @@ test("authenticated owner can create, edit, reorder and recoverably archive a pr
   publicData = await agent.get("/api/public/storefront").expect(200);
   assert.equal(publicData.body.products.find((product)=>product.id===created.body.id).categoryPositions.kids,1);
   await agent.post(`/api/admin/products/${created.body.id}/archive`).set("x-csrf-token",csrf).send({}).expect(200);
-  assert.deepEqual(await metrics(), { total: 35, published: 34, draft: null, visible: 34 });
+  assert.deepEqual(await metrics(), { total: 35, published: 34, draft: 0, visible: 34, variable: 34 });
   publicData = await agent.get("/api/public/storefront").expect(200);
   assert.equal(publicData.body.products.some((product)=>product.id===created.body.id),false);
   const adminData = await agent.get("/api/admin/products").expect(200);
@@ -48,6 +48,39 @@ test("authenticated owner can create, edit, reorder and recoverably archive a pr
   await agent.post(`/api/admin/products/${created.body.id}/restore`).set("x-csrf-token",csrf).send({}).expect(200);
   const restored = await agent.get("/api/admin/products").expect(200);
   assert.equal(restored.body.products.find((product)=>product.id===created.body.id).status,"hidden");
+});
+
+test("draft editor fields persist privately and publish only after owner confirmation", async (t) => {
+  const system = await setupTestSystem(); t.after(async()=>{await system.db.end();await system.cleanup()});
+  const { agent, csrf } = await authenticated(system);
+  const payload = {
+    slug: "owner-editor-draft", originalName: "اسم أصلي", displayName: "فستان تجريبي",
+    description: "الوصف الأصلي", shortDescription: "وصف مختصر", descriptionHtml: '<h2>تفاصيل</h2><p style="text-align: right">نص</p><img src=x onerror=alert(1)><script>alert(1)</script>',
+    priceMad: 150, comparisonPriceMad: 180, costPriceMad: 70, tags: ["أطفال"],
+    brandName: "MELYNE", modelName: "M1", supplierName: "مورد داخلي",
+    badgeText: "جديد", badgeColor: "#386549", seoTitle: "عنوان البحث", metaDescription: "وصف البحث",
+    weightKg: 0.25, widthCm: 12, heightCm: 20, depthCm: 3,
+    availability: "available", status: "draft", categorySlugs: ["kids"], options: [], variants: [], featured: false,
+  };
+  const created = await agent.post("/api/admin/products").set("x-csrf-token", csrf).send(payload).expect(201);
+  const id = created.body.id;
+  let admin = (await agent.get("/api/admin/products").expect(200)).body.products.find((item) => item.id === id);
+  assert.equal(admin.status, "draft");
+  assert.equal(admin.costPriceMad, 70);
+  assert.equal(admin.supplierName, "مورد داخلي");
+  assert.equal(admin.seoTitle, "عنوان البحث");
+  assert.equal(admin.descriptionHtml.includes("<script"), false);
+  assert.equal((await agent.get("/api/public/storefront").expect(200)).body.products.some((item) => item.id === id), false);
+  await agent.put(`/api/admin/products/${id}`).set("x-csrf-token", csrf).send({ ...payload, status: "published" }).expect(200);
+  const published = (await agent.get("/api/public/storefront").expect(200)).body.products.find((item) => item.id === id);
+  assert.equal(published.shortDescription, "وصف مختصر");
+  assert.equal(published.badgeText, "جديد");
+  assert.equal(published.costPriceMad, undefined);
+  assert.equal(published.supplierName, undefined);
+  assert.equal(JSON.stringify(published).includes("مورد داخلي"), false);
+  admin = (await agent.get("/api/admin/products").expect(200)).body.products.find((item) => item.id === id);
+  assert.equal(admin.weightKg, 0.25);
+  assert.equal(admin.tags[0], "أطفال");
 });
 
 test("banner publishing, ordering and archival are reflected publicly", async (t) => {
@@ -117,5 +150,10 @@ test("owner can upload, preview, replace and reorder product images without brea
   await agent.put(`/api/admin/products/${product.id}/image-order`).set("x-csrf-token",csrf).send({orderedImageIds:ordered}).expect(204);
   const publicData=(await agent.get("/api/public/storefront").expect(200)).body;const publicProduct=publicData.products.find((item)=>item.id===product.id);assert.equal(publicProduct.images[0].id,added.body.id);assert.equal(publicProduct.images[0].colorLabel,colorLabel);assert.ok(publicProduct.variants.every((variant)=>!variant.imageId||publicProduct.images.some((image)=>image.id===variant.imageId)));
   const backup=await createUploadBackup(system.config);assert.ok(backup.manifest.fileCount>=2);assert.equal(backup.manifest.files.every((file)=>/^[a-f0-9]{64}$/.test(file.sha256)),true);
+  await agent.delete(`/api/admin/products/${product.id}/images/${added.body.id}`).set("x-csrf-token",csrf).expect(204);
+  const afterArchive=(await agent.get("/api/admin/products").expect(200)).body.products.find((item)=>item.id===product.id);
+  assert.equal(afterArchive.images.some((image)=>image.id===added.body.id),false);
+  await agent.put(`/api/admin/products/${product.id}/image-order`).set("x-csrf-token",csrf).send({orderedImageIds:afterArchive.images.map((image)=>image.id)}).expect(204);
+  await agent.delete(`/api/admin/products/${product.id}/images/${linkedImage.id}`).set("x-csrf-token",csrf).expect(409);
 });
 

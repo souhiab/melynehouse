@@ -1,11 +1,11 @@
 // The public storefront endpoint is the source of truth for what customers can see.
-// Product drafts do not exist in the current schema (published/hidden/archived only).
 export function deriveProductStats(products, publicProducts) {
   return {
     total: products.length, // Includes archived records retained for order history.
     published: products.filter((product) => product.status === "published").length,
-    draft: null,
+    draft: products.filter((product) => product.status === "draft").length,
     visible: publicProducts.length,
+    variable: products.filter((product) => product.status !== "archived" && product.variants?.length > 1).length,
   };
 }
 

@@ -1,0 +1,83 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import pg from "pg";
+import request from "supertest";
+import { createDatabase } from "../server/db.mjs";
+import { createApp } from "../server/app.mjs";
+import { applyMigrations, csrfFrom } from "./admin-test-helpers.mjs";
+import { hashPassword } from "../server/security.mjs";
+
+test("real local PostgreSQL accepts draft editor fields without changing the catalog", async () => {
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required for real PostgreSQL acceptance");
+  const db = createDatabase(process.env.DATABASE_URL);
+  const client = await db.connect();
+  const id = crypto.randomUUID();
+  try {
+    const before = Number((await client.query("SELECT COUNT(*) AS n FROM products")).rows[0].n);
+    await client.query("BEGIN");
+    await client.query("INSERT INTO products(id,slug,original_name,display_name,price_mad,availability,status,cost_price_mad,seo_title) VALUES($1,$2,$3,$4,$5,'available','draft',$6,$7)", [id, `qa-draft-${id}`, "اسم اختباري", "منتج اختباري", 100, 40, "عنوان SEO"]);
+    const row = (await client.query("SELECT status,cost_price_mad,seo_title FROM products WHERE id=$1", [id])).rows[0];
+    assert.equal(row.status, "draft");
+    assert.equal(Number(row.cost_price_mad), 40);
+    assert.equal(row.seo_title, "عنوان SEO");
+    await client.query("ROLLBACK");
+    assert.equal(Number((await client.query("SELECT COUNT(*) AS n FROM products")).rows[0].n), before);
+    assert.equal((await client.query("SELECT id FROM products WHERE id=$1", [id])).rowCount, 0);
+  } finally {
+    await client.query("ROLLBACK").catch(() => {});
+    client.release();
+    await db.end();
+  }
+});
+
+test("real PostgreSQL owner workflow saves draft, images, metadata, publication and archive in an isolated schema", async (t) => {
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required for real PostgreSQL acceptance");
+  const base = createDatabase(process.env.DATABASE_URL);
+  const server = (await base.query("SELECT inet_server_addr() host,current_database() database")).rows[0];
+  assert.ok(["127.0.0.1", "::1"].includes(server.host));
+  assert.equal(server.database, "melyne_dev");
+  const before = Number((await base.query("SELECT COUNT(*) AS n FROM products")).rows[0].n);
+  const schema = `owner_editor_test_${crypto.randomBytes(8).toString("hex")}`;
+  assert.match(schema, /^owner_editor_test_[0-9a-f]{16}$/);
+  await base.query(`CREATE SCHEMA ${schema}`);
+  const db = new pg.Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}` });
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "melyne-owner-editor-test-"));
+  t.after(async () => {
+    await db.end();
+    await base.query(`DROP SCHEMA ${schema} CASCADE`);
+    assert.equal(Number((await base.query("SELECT COUNT(*) AS n FROM products")).rows[0].n), before);
+    await base.end();
+    assert.ok(path.resolve(tempRoot).startsWith(path.resolve(os.tmpdir()) + path.sep));
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  });
+  await applyMigrations(db);
+  await db.query("INSERT INTO categories(id,slug,name) VALUES('kids','kids','الأطفال')");
+  await db.query("INSERT INTO admin_users(id,email,password_hash) VALUES($1,$2,$3)", [crypto.randomUUID(), "owner-editor@example.test", await hashPassword("local-test-password")]);
+  const app = await createApp({ db, config: { uploadRoot: path.join(tempRoot, "uploads"), backupRoot: path.join(tempRoot, "backups"), publicBaseUrl: "http://localhost", allowedOrigins: ["http://localhost"], production: false, sessionSecret: "local-owner-editor-test-secret-123456", googleSheetsWebhookUrl: null, googleSheetsWebhookSecret: null } });
+  const agent = request.agent(app);
+  const login = await agent.post("/api/admin/session").send({ email: "owner-editor@example.test", password: "local-test-password" }).expect(200);
+  const csrf = csrfFrom(login);
+  const payload = { slug: "real-editor-test", originalName: "الاسم الأصلي", displayName: "منتج محلي", description: "وصف", shortDescription: "مختصر", descriptionHtml: "<h2>تفاصيل</h2>", priceMad: 120, comparisonPriceMad: 150, costPriceMad: 50, tags: ["أطفال"], brandName: "MELYNE", modelName: "M1", supplierName: "مورد خاص", badgeText: "جديد", badgeColor: "#386549", seoTitle: "عنوان البحث", metaDescription: "وصف البحث", weightKg: 0.2, widthCm: 10, heightCm: 20, depthCm: 2, availability: "available", status: "draft", categorySlugs: ["kids"], options: [], variants: [], featured: false };
+  const created = await agent.post("/api/admin/products").set("x-csrf-token", csrf).send(payload).expect(201);
+  const id = created.body.id;
+  assert.equal((await agent.get("/api/public/storefront").expect(200)).body.products.length, 0);
+  const png = Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0,0,0,0,0]);
+  const image = await agent.post(`/api/admin/products/${id}/images`).set("x-csrf-token", csrf).field("altText", "صورة المنتج").attach("image", png, { filename: "product.png", contentType: "image/png" }).expect(201);
+  await agent.put(`/api/admin/products/${id}`).set("x-csrf-token", csrf).send({ ...payload, status: "published" }).expect(200);
+  const published = (await agent.get("/api/public/storefront").expect(200)).body.products[0];
+  assert.equal(published.id, id);
+  assert.equal(published.images[0].id, image.body.id);
+  assert.equal(published.costPriceMad, undefined);
+  assert.equal(published.supplierName, undefined);
+  const owner = (await agent.get("/api/admin/products").expect(200)).body.products[0];
+  assert.equal(owner.costPriceMad, 50);
+  assert.equal(owner.supplierName, "مورد خاص");
+  await agent.delete(`/api/admin/products/${id}/images/${image.body.id}`).set("x-csrf-token", csrf).expect(204);
+  assert.equal((await agent.get("/api/public/storefront").expect(200)).body.products[0].images.length, 0);
+  await agent.post(`/api/admin/products/${id}/archive`).set("x-csrf-token", csrf).send({}).expect(200);
+  assert.equal((await agent.get("/api/public/storefront").expect(200)).body.products.length, 0);
+});

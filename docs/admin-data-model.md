@@ -5,7 +5,7 @@ PostgreSQL is the source of truth. Google Sheets receives an operational copy of
 ## Core tables
 
 - `categories`: stable imported IDs, slugs, Arabic names, deterministic category order.
-- `products`: stable imported product IDs; original and display names; descriptions; MAD prices; publication state; fallback ordering; independent featured state/order; option definitions.
+- `products`: stable imported product IDs; original and display names; sanitized detailed HTML, short description, MAD sale/comparison prices; private buying cost and supplier; public tags, brand, model, badge and SEO fields; optional internal physical measurements; publication state; fallback ordering; independent featured state/order; option definitions.
 - `product_categories`: many-to-many category membership plus explicit per-category `sort_position`.
 - `product_variants`: stable imported variant IDs, selections, server-authoritative price, stock and availability, and image association.
 - `product_images`: stable imported image IDs, persistent-storage keys/URLs, alternative text and explicit image order. Replacements keep the image ID so variant associations survive.
@@ -22,7 +22,7 @@ Category pages use `product_categories.sort_position`, then stable product ID. H
 
 ## Publication and deletion
 
-Products are `published`, `hidden`, or `archived`. Banners are `draft`, `published`, or `archived`. Admin “delete” operations archive by default. Public APIs return only published products and currently active published banners.
+Products are `draft`, `published`, `hidden`, or `archived`. Banners are `draft`, `published`, or `archived`. Admin “delete” operations archive by default. Public APIs return only published products and currently active published banners. Product buying cost, supplier, weight, and dimensions are returned only by the authenticated owner API.
 
 ## Price and availability authority
 

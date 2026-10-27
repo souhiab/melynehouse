@@ -11,6 +11,9 @@ export async function applyMigrations(db) {
   const directory=path.resolve("server/sql");
   const files=(await fs.readdir(directory)).filter(name=>/^\d+.*\.sql$/.test(name)).sort();
   for(const file of files) await db.query(await fs.readFile(path.join(directory,file),"utf8"));
+  // pg-mem assigns anonymous CHECK names differently from PostgreSQL. Migration
+  // 004 drops PostgreSQL's products_status_check; remove pg-mem's stale copy.
+  await db.query("ALTER TABLE products DROP CONSTRAINT IF EXISTS products_constraint_4");
 }
 
 export async function setupTestSystem({ importProducts = true, configOverrides = {}, fetchImpl = globalThis.fetch } = {}) {

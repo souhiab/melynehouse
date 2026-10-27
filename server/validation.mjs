@@ -3,10 +3,17 @@ import { z } from "zod";
 const money = z.number().finite().min(0).max(1_000_000);
 const identifier = z.string().trim().min(1).max(200);
 const nullableMoney = money.nullable().optional();
+const optionalText = (max) => z.string().trim().max(max).nullable().optional();
+const optionalMeasure = z.number().finite().min(0).max(1_000_000).nullable().optional();
 
 export const loginSchema = z.object({ email: z.email().max(320), password: z.string().min(1).max(1000) }).strict();
 
 export const imageColorSchema = z.object({ colorLabel: z.string().min(1).max(200).nullable() }).strict();
+
+const optionSchema = z.object({
+  id: identifier, name: z.string().trim().min(1).max(120), key: z.string().max(120).nullable().optional(),
+  values: z.array(z.object({ id: identifier, label: z.string().trim().min(1).max(200), secondaryLabel: z.string().max(200).nullable().optional() }).strict()).max(100),
+}).strict();
 
 export const variantSchema = z.object({
   id: identifier.optional(),
@@ -26,14 +33,24 @@ export const productSchema = z.object({
   slug: z.string().trim().min(1).max(300).regex(/^[^/?#]+$/),
   originalName: z.string().trim().min(1).max(500), displayName: z.string().trim().min(1).max(500),
   description: z.string().max(50_000).nullable().optional(), descriptionHtml: z.string().max(100_000).nullable().optional(),
+  shortDescription: optionalText(2_000), costPriceMad: nullableMoney,
+  tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+  brandName: optionalText(120), modelName: optionalText(120), supplierName: optionalText(120),
+  badgeText: optionalText(40), badgeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+  seoTitle: optionalText(160), metaDescription: optionalText(320),
+  weightKg: optionalMeasure, widthCm: optionalMeasure, heightCm: optionalMeasure, depthCm: optionalMeasure,
   priceMad: money, comparisonPriceMad: nullableMoney,
-  availability: z.enum(["available", "unavailable"]), status: z.enum(["published", "hidden", "archived"]),
-  categorySlugs: z.array(identifier).min(1).max(10), options: z.array(z.unknown()).max(20).default([]),
+  availability: z.enum(["available", "unavailable"]), status: z.enum(["draft", "published", "hidden", "archived"]),
+  categorySlugs: z.array(identifier).min(1).max(10), options: z.array(optionSchema).max(20).default([]),
   variants: z.array(variantSchema).max(500).default([]),
   featured: z.boolean().default(false),
 }).strict().superRefine((value, ctx) => {
   if (value.comparisonPriceMad != null && value.comparisonPriceMad < value.priceMad) ctx.addIssue({ code: "custom", path: ["comparisonPriceMad"], message: "Comparison price cannot be lower than the selling price" });
   if (new Set(value.categorySlugs).size !== value.categorySlugs.length) ctx.addIssue({ code: "custom", path: ["categorySlugs"], message: "Categories must be unique" });
+  if (new Set(value.options.map((option) => option.id)).size !== value.options.length) ctx.addIssue({ code: "custom", path: ["options"], message: "Option IDs must be unique" });
+  for (const [index, option] of value.options.entries()) {
+    if (new Set(option.values.map((item) => item.label)).size !== option.values.length) ctx.addIssue({ code: "custom", path: ["options", index, "values"], message: "Option values must be unique" });
+  }
   const variants = new Set();
   for (const [index, variant] of value.variants.entries()) {
     const signature = variant.selections.map((selection) => `${selection.optionKey || selection.option}=${selection.value}`).sort().join("|");

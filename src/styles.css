@@ -129,6 +129,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .product-image-wrap > a { display: block; width: 100%; height: 100%; }
 .product-image-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; transition: transform .4s ease; }
 .product-card:hover .product-image-wrap img { transform: scale(1.025); }
+.product-card-placeholder { width: 100%; height: 100%; display: grid; place-items: center; background: #edf1ec; color: #6c8273; }
 .sale-badge, .stock-badge { position: absolute; top: 12px; right: 12px; padding: 5px 10px; border-radius: 999px; background: var(--warm); color: var(--white); font-size: 11px; font-weight: 700; }
 .stock-badge { top: auto; bottom: 12px; background: rgba(16,44,76,.9); }
 .wishlist-button { position: absolute; top: 10px; left: 10px; width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.94); cursor: pointer; box-shadow: 0 5px 20px rgba(12,35,57,.1); }
@@ -241,6 +242,10 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .product-accordions dl > div { display: grid; grid-template-columns: 100px 1fr; padding-block: 5px; }
 .product-accordions dt { color: var(--ink); }
 .product-accordions dd { margin: 0; }
+.product-rich-description { overflow-wrap: anywhere; }
+.product-rich-description :is(h2,h3) { margin: 12px 0 8px; color: var(--ink); }
+.product-rich-description :is(ul,ol) { padding-inline-start: 22px; }
+.product-rich-description a { color: var(--green); text-decoration: underline; }
 
 .page-heading { margin-bottom: 28px; text-align: center; }
 .page-heading.align-start { text-align: start; }
