@@ -23,9 +23,11 @@ export const variantSchema = z.object({
   comparisonPriceMad: nullableMoney,
   stockQuantity: z.number().int().min(0).max(10_000_000).nullable().optional(),
   available: z.boolean(),
+  retired: z.boolean().default(false),
   imageId: identifier.nullable().optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.comparisonPriceMad != null && value.comparisonPriceMad < value.priceMad) ctx.addIssue({ code: "custom", path: ["comparisonPriceMad"], message: "Comparison price cannot be lower than the selling price" });
+  if (value.retired && value.available) ctx.addIssue({ code: "custom", path: ["available"], message: "A retired variant cannot be available" });
 });
 
 export const productSchema = z.object({
@@ -55,8 +57,9 @@ export const productSchema = z.object({
   const variants = new Set();
   for (const [index, variant] of value.variants.entries()) {
     const selectedOptions = new Set();
-    if (variant.selections.length !== activeOptions.length) ctx.addIssue({ code: "custom", path: ["variants", index, "selections"], message: "Each variant must select every active option" });
+    if (!variant.retired && variant.selections.length !== activeOptions.length) ctx.addIssue({ code: "custom", path: ["variants", index, "selections"], message: "Each active variant must select every active option" });
     for (const [selectionIndex, selection] of variant.selections.entries()) {
+      if (variant.retired) continue;
       const option = activeOptions.find((item) => (item.key || item.name) === (selection.optionKey || selection.option) || item.name === selection.option);
       const optionId = option?.id;
       if (!option || selectedOptions.has(optionId) || !option.values.some((item) => item.label === selection.value)) {

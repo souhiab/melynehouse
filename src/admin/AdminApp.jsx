@@ -29,6 +29,7 @@ import { AnalyticsPanel, CollectionsPanel, DashboardPanel, MetadataPanel, StockP
 import { colorOptionFor, colorOfVariant } from "../product-colors.js";
 import { deriveProductStats, filterOwnerProducts } from "./product-stats.js";
 import { readSidebarPreference, saveSidebarPreference } from "./sidebar-preference.js";
+import { buildVariants, optionValuesFromText, selectionSignature } from "./variant-lifecycle.js";
 import "./admin.css";
 
 const csrfToken = () => decodeURIComponent(
@@ -107,37 +108,6 @@ const optionKind = (option) => {
   return null;
 };
 
-const selectionSignature = (selections) => selections
-  .map((selection) => `${String(selection.optionKey || selection.option).toLowerCase()}=${selection.value}`)
-  .sort()
-  .join("|");
-
-function buildVariants(options, previous, priceMad, comparisonPriceMad) {
-  const active = options.filter((option) => Array.isArray(option.values) && option.values.length);
-  if (!active.length) return [];
-  const combinations = active.reduce(
-    (sets, option) => sets.flatMap((set) => option.values.map((value) => [...set, {
-      option: option.name,
-      optionKey: option.key || option.name,
-      value: value.label,
-    }])),
-    [[]],
-  );
-  const existing = new Map(previous.map((variant) => [selectionSignature(variant.selections), variant]));
-  return combinations.map((selections) => {
-    const match = existing.get(selectionSignature(selections));
-    return match ? { ...match, selections, name: selections.map((selection) => `${selection.option} : ${selection.value}`).join(" | ") } : {
-      name: selections.map((selection) => `${selection.option} : ${selection.value}`).join(" | "),
-      selections,
-      priceMad: Number(priceMad || 0),
-      comparisonPriceMad: comparisonPriceMad === "" || comparisonPriceMad == null ? null : Number(comparisonPriceMad),
-      stockQuantity: null,
-      available: true,
-      imageId: null,
-    };
-  });
-}
-
 function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged, onDirtyChange }) {
   const initial = product ? {
     id: product.id,
@@ -168,6 +138,7 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
       comparisonPriceMad: variant.price.comparison,
       stockQuantity: variant.stockQuantity,
       available: variant.availability === "available",
+      retired: Boolean(variant.retired),
       imageId: variant.imageId || null,
     })),
     featured: Boolean(product.featured),
@@ -206,15 +177,10 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
   const cancel = () => { if (!dirty || window.confirm("هناك تغييرات غير محفوظة. هل تريد المغادرة؟")) onCancel(); };
   const optionValues = (kind) => form.options.find((option) => optionKind(option) === kind)?.values?.map((value) => value.label).join(", ") || "";
   const setOptionValues = (kind, text) => {
-    const labels = [...new Set(text.split(",").map((value) => value.trim()).filter(Boolean))];
     setDirty(true);
     setForm((current) => {
       const old = current.options.find((option) => optionKind(option) === kind);
-      const values = labels.map((label, index) => old?.values?.find((value) => value.label === label) || {
-        id: `owner-${kind}-${index}`,
-        label,
-        secondaryLabel: label,
-      });
+      const values = optionValuesFromText(text, old?.values, `owner-${kind}`);
       const nextOption = { id: old?.id || `owner-${kind}`, name: old?.name || (kind === "size" ? "Size" : "Color"), key: old?.key ?? (kind === "size" ? "size" : null), values };
       const options = [...current.options.filter((option) => optionKind(option) !== kind), nextOption];
       return { ...current, options, variants: buildVariants(options, current.variants, current.priceMad, current.comparisonPriceMad) };
@@ -239,6 +205,8 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
   const save = async (event) => {
     event.preventDefault();
     if (busy) return;
+    const retiringCount = product?.variants.filter((variant) => !variant.retired && !form.variants.some((item) => item.id === variant.id && !item.retired)).length || 0;
+    if (retiringCount && !window.confirm(`سيُحال ${retiringCount} من توليفات المنتج إلى التقاعد. ستبقى الطلبات وحركات المخزون محفوظة، ولن يمكن شراء هذه التوليفات. هل تريد المتابعة؟`)) return;
     setBusy(true);
     setError("");
     try {
@@ -303,9 +271,22 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
       </div></details>
       <details className="owner-editor-section"><summary><ListNumbers size={24} /><span><strong>الخيارات والمتغيرات</strong><small>المقاسات والألوان وتوفر كل توليفة</small></span></summary><div className="owner-editor-section-body">
         <div className="owner-form-grid"><label>المقاسات (مفصولة بفواصل)<input value={optionValues("size")} onChange={(event) => setOptionValues("size", event.target.value)} /></label><label>الألوان (مفصولة بفواصل)<input value={optionValues("color")} onChange={(event) => setOptionValues("color", event.target.value)} /></label></div>
-        <div className="owner-custom-options">{form.options.filter((option) => !optionKind(option)).map((option) => <div key={option.id} className="owner-custom-option"><label>اسم الخيار<input value={option.name} onChange={(event) => changeCustomOption(option.id, { name: event.target.value })} /></label><label>القيم (مفصولة بفواصل)<input value={option.values.map((value) => value.label).join(", ")} onChange={(event) => { const labels = [...new Set(event.target.value.split(",").map((value) => value.trim()).filter(Boolean))]; changeCustomOption(option.id, { values: labels.map((label, index) => option.values.find((value) => value.label === label) || { id: `${option.id}-${index}`, label, secondaryLabel: label }) }); }} /></label><button type="button" className="danger" onClick={() => removeCustomOption(option.id)}>إزالة الخيار</button></div>)}<button type="button" className="quiet" onClick={addCustomOption}>+ إضافة خيار آخر مثل المادة</button></div>
+        <div className="owner-custom-options">{form.options.filter((option) => !optionKind(option)).map((option) => <div key={option.id} className="owner-custom-option"><label>اسم الخيار<input value={option.name} onChange={(event) => changeCustomOption(option.id, { name: event.target.value })} /></label><label>القيم (مفصولة بفواصل)<input value={option.values.map((value) => value.label).join(", ")} onChange={(event) => changeCustomOption(option.id, { values: optionValuesFromText(event.target.value, option.values, option.id) })} /></label><button type="button" className="danger" onClick={() => removeCustomOption(option.id)}>إزالة الخيار</button></div>)}<button type="button" className="quiet" onClick={addCustomOption}>+ إضافة خيار آخر مثل المادة</button></div>
         <p className="owner-editor-note">يُعاد استخدام معرّف التوليفة الموجودة عند بقاء خياراتها كما هي. المخزون غير المحدد لا يقبل طلبات.</p>
-        {form.variants.length > 0 && <div className="variant-table" role="region" aria-label="توليفات المنتج" tabIndex="0"><table><thead><tr><th>متاح</th><th>التوليفة</th><th>السعر</th><th>السعر السابق</th><th>المخزون</th><th>صورة التوليفة</th></tr></thead><tbody>{form.variants.map((variant, index) => <tr key={variant.id || selectionSignature(variant.selections)}><td><input type="checkbox" checked={variant.available} onChange={(event) => updateVariant(index, { available: event.target.checked })} aria-label={`توفر ${variant.name}`} /></td><td>{variant.name}</td><td><input type="number" min="0" step="0.01" value={variant.priceMad} onChange={(event) => updateVariant(index, { priceMad: event.target.value })} aria-label={`سعر ${variant.name}`} /></td><td><input type="number" min="0" step="0.01" value={variant.comparisonPriceMad ?? ""} onChange={(event) => updateVariant(index, { comparisonPriceMad: event.target.value })} aria-label={`السعر السابق ${variant.name}`} /></td><td><input type="number" min="0" step="1" value={variant.stockQuantity ?? ""} onChange={(event) => updateVariant(index, { stockQuantity: event.target.value })} placeholder="غير محدد" aria-label={`مخزون ${variant.name}`} /></td><td><select value={variant.imageId || ""} onChange={(event) => updateVariant(index, { imageId: event.target.value || null })} aria-label={`صورة ${variant.name}`}><option value="">بلا صورة</option>{product?.images.map((image, imageIndex) => <option key={image.id} value={image.id}>الصورة {imageIndex + 1}{image.colorLabel ? ` — ${image.colorLabel}` : ""}</option>)}</select></td></tr>)}</tbody></table></div>}
+        <p className="owner-editor-note">المتاح مؤقتاً يمكن إيقافه دون حذف. نفاد المخزون يعني كمية صفر، أما التوليفة المتقاعدة فتبقى للطلبات وسجل المخزون ولا تظهر للشراء. إعادة تنشيطها تبدأ بحالة غير متاحة حتى تراجع مخزونها.</p>
+        {form.variants.length > 0 && <div className="variant-table" role="region" aria-label="توليفات المنتج" tabIndex="0"><table><thead><tr><th>الحالة</th><th>التوليفة</th><th>السعر</th><th>السعر السابق</th><th>المخزون</th><th>صورة التوليفة</th><th>الإجراء</th></tr></thead><tbody>{form.variants.map((variant, index) => {
+          const canRestore = variant.selections.every((selection) => form.options.some((option) => (option.key || option.name) === (selection.optionKey || selection.option) && option.values.some((value) => value.label === selection.value)));
+          const state = variant.retired ? "متقاعدة" : !variant.available ? "غير متاحة مؤقتاً" : variant.stockQuantity == null ? "مخزون غير محدد" : Number(variant.stockQuantity) === 0 ? "نفد المخزون" : "نشطة ومتاحة";
+          return <tr key={variant.id || selectionSignature(variant.selections)} className={variant.retired ? "owner-variant-retired" : ""}>
+            <td><span className="owner-variant-state">{state}</span>{!variant.retired && <label className="check"><input type="checkbox" checked={variant.available} onChange={(event) => updateVariant(index, { available: event.target.checked })} aria-label={`توفر ${variant.name}`} /> متاحة</label>}</td>
+            <td>{variant.name}</td>
+            <td><input type="number" min="0" step="0.01" value={variant.priceMad} onChange={(event) => updateVariant(index, { priceMad: event.target.value })} aria-label={`سعر ${variant.name}`} disabled={variant.retired} /></td>
+            <td><input type="number" min="0" step="0.01" value={variant.comparisonPriceMad ?? ""} onChange={(event) => updateVariant(index, { comparisonPriceMad: event.target.value })} aria-label={`السعر السابق ${variant.name}`} disabled={variant.retired} /></td>
+            <td><input type="number" min="0" step="1" value={variant.stockQuantity ?? ""} onChange={(event) => updateVariant(index, { stockQuantity: event.target.value })} placeholder="غير محدد" aria-label={`مخزون ${variant.name}`} disabled={variant.retired} /></td>
+            <td><select value={variant.imageId || ""} onChange={(event) => updateVariant(index, { imageId: event.target.value || null })} aria-label={`صورة ${variant.name}`} disabled={variant.retired}><option value="">بلا صورة</option>{product?.images.map((image, imageIndex) => <option key={image.id} value={image.id}>الصورة {imageIndex + 1}{image.colorLabel ? ` — ${image.colorLabel}` : ""}</option>)}</select></td>
+            <td>{variant.retired ? <button type="button" className="quiet" disabled={!canRestore} title={canRestore ? "إعادة تنشيط كتوليفة غير متاحة" : "أعد قيم اللون والمقاس إلى الخيارات أولاً"} onClick={() => updateVariant(index, { retired: false, available: false })}>إعادة تنشيط</button> : <button type="button" className="danger" onClick={() => { if (window.confirm(`إحالة ${variant.name} إلى التقاعد؟ ستبقى الطلبات وحركات المخزون محفوظة.`)) updateVariant(index, { retired: true, available: false }); }}>إحالة للتقاعد</button>}</td>
+          </tr>;
+        })}</tbody></table></div>}
       </div></details>
       <details className="owner-editor-section"><summary><MagnifyingGlass size={24} /><span><strong>تحسين محركات البحث</strong><small>عنوان الصفحة والوصف والرابط</small></span></summary><div className="owner-editor-section-body owner-form-grid">
         <label>عنوان SEO<input maxLength="160" value={form.seoTitle} onChange={(event) => update("seoTitle", event.target.value)} /></label>

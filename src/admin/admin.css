@@ -126,6 +126,11 @@
 .owner-sidebar .owner-subitem svg { width: 20px; height: 20px; }
 .owner-app .owner-sidebar .logout { position: static; width: 100%; margin-top: 10px; flex: none; }
 .owner-app .owner-sidebar nav button:disabled { opacity: .5; cursor: not-allowed; }
+.owner-product-editor .variant-table table { min-width: 940px; }
+.owner-variant-state { display: block; min-width: 110px; margin-bottom: 5px; font-size: 12px; font-weight: 700; }
+.owner-variant-retired { background: #f4f3ef; color: #66716a; }
+.owner-variant-retired .owner-variant-state { color: #8b562e; }
+.owner-product-editor .variant-table td > button { width: auto; white-space: nowrap; }
 .owner-pagination { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 20px 0; }
 .owner-pagination button, .owner-simple-actions button { width: auto; padding: 9px 16px; border: 1px solid var(--owner-line); border-radius: 8px; background: white; color: var(--owner-green); font: inherit; cursor: pointer; }
 .owner-pagination button:disabled { opacity: .45; cursor: not-allowed; }

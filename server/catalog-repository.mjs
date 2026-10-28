@@ -3,6 +3,7 @@ import { transaction } from "./db.mjs";
 import { sanitizeProductHtml } from "./product-html.mjs";
 
 const numberOrNull = (value) => value == null ? null : Number(value);
+const selectionSignature = (selections) => (selections || []).map((selection) => `${selection.optionKey || selection.option}=${selection.value}`).sort().join("|");
 
 export async function loadProducts(db, { includeUnpublished = false } = {}) {
   const productResult = await db.query(`
@@ -15,7 +16,7 @@ export async function loadProducts(db, { includeUnpublished = false } = {}) {
   const [categoryResult, imageResult, variantResult] = await Promise.all([
     db.query(`SELECT pc.product_id, pc.sort_position, c.id, c.slug, c.name FROM product_categories pc JOIN categories c ON c.id=pc.category_id WHERE pc.product_id IN (${placeholders}) ORDER BY c.sort_position,c.id`, ids),
     db.query(`SELECT * FROM product_images WHERE product_id IN (${placeholders}) AND archived_at IS NULL ORDER BY sort_position,id`, ids),
-    db.query(`SELECT * FROM product_variants WHERE product_id IN (${placeholders}) ORDER BY id`, ids),
+    db.query(`SELECT * FROM product_variants WHERE product_id IN (${placeholders}) ${includeUnpublished ? "" : "AND retired_at IS NULL"} ORDER BY id`, ids),
   ]);
   return productResult.rows.map((row) => ({
     ...(row.source_metadata || {}),
@@ -32,7 +33,12 @@ export async function loadProducts(db, { includeUnpublished = false } = {}) {
     } : {}),
     price: { current: Number(row.price_mad), comparison: numberOrNull(row.comparison_price_mad), currency: "MAD" },
     availability: row.availability, status: row.status, order: row.category_sort_position,
-    featured: row.featured, featuredOrder: row.featured_sort_position, options: row.options || [],
+    featured: row.featured, featuredOrder: row.featured_sort_position,
+    options: includeUnpublished ? row.options || [] : (row.options || []).map((option) => ({
+      ...option,
+      values: (option.values || []).filter((value) => variantResult.rows.some((variant) => variant.product_id === row.id && (variant.selections || []).some((selection) =>
+        (selection.optionKey || selection.option) === (option.key || option.name) && selection.value === value.label))),
+    })).filter((option) => option.values.length),
     categories: categoryResult.rows.filter((item) => item.product_id === row.id).map(({ id, slug, name, sort_position }) => ({ id, slug, name, sortPosition: Number(sort_position) })),
     categoryPositions: Object.fromEntries(categoryResult.rows.filter((item) => item.product_id === row.id).map((item) => [item.slug, Number(item.sort_position)])),
     images: imageResult.rows.filter((item) => item.product_id === row.id).map((item) => ({
@@ -44,6 +50,7 @@ export async function loadProducts(db, { includeUnpublished = false } = {}) {
       id: item.id, name: item.name, selections: item.selections || [],
       price: { current: Number(item.price_mad), comparison: numberOrNull(item.comparison_price_mad), currency: "MAD" },
       stockQuantity: item.stock_quantity, availability: item.available ? "available" : "unavailable", imageId: item.image_id,
+      ...(includeUnpublished ? { retired: item.retired_at != null, retiredAt: item.retired_at } : {}),
     })),
     sourceMetadata: row.source_metadata || {}, archivedAt: row.archived_at,
   }));
@@ -73,21 +80,26 @@ export async function saveProduct(db, input, productId = input.id || crypto.rand
       await client.query("INSERT INTO product_categories(product_id,category_id,sort_position) VALUES($1,$2,$3) ON CONFLICT(product_id,category_id) DO UPDATE SET sort_position=EXCLUDED.sort_position", [productId,categoryId,position]);
     }
     await client.query("DELETE FROM product_categories WHERE product_id=$1 AND NOT(category_id = ANY($2::text[]))", [productId,retainedCategoryIds]);
+    const existingVariants = await client.query("SELECT id,selections,retired_at FROM product_variants WHERE product_id=$1 ORDER BY id FOR UPDATE", [productId]);
+    const existingById = new Map(existingVariants.rows.map((variant) => [variant.id, variant]));
+    const existingBySignature = new Map(existingVariants.rows.map((variant) => [selectionSignature(variant.selections), variant.id]));
     const retained = [];
     for (const variant of input.variants || []) {
       const variantId = variant.id || crypto.randomUUID(); retained.push(variantId);
-      const priorVariant = await client.query("SELECT product_id FROM product_variants WHERE id=$1",[variantId]);
-      if (priorVariant.rowCount && priorVariant.rows[0].product_id !== productId) { const error=new Error("A variant ID belongs to another product"); error.status=400; throw error; }
+      const priorVariant = existingById.get(variantId);
+      if (!priorVariant && (await client.query("SELECT id FROM product_variants WHERE id=$1", [variantId])).rowCount) { const error=new Error("A variant ID belongs to another product"); error.status=400; throw error; }
+      const signature = selectionSignature(variant.selections);
+      if (priorVariant && selectionSignature(priorVariant.selections) !== signature) { const error=new Error("Retire the old variant and create a new combination instead of changing its identity"); error.status=409; throw error; }
+      if (existingBySignature.has(signature) && existingBySignature.get(signature) !== variantId) { const error=new Error("This combination already has a variant; restore its existing ID instead of recreating it"); error.status=409; throw error; }
       if (variant.imageId) {
         const image = await client.query("SELECT id FROM product_images WHERE id=$1 AND product_id=$2 AND archived_at IS NULL",[variant.imageId,productId]);
         if (!image.rowCount) { const error=new Error("A variant image must belong to the same product"); error.status=400; throw error; }
       }
-      await client.query(`INSERT INTO product_variants(id,product_id,name,selections,price_mad,comparison_price_mad,stock_quantity,available,image_id,updated_at)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now()) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,selections=EXCLUDED.selections,price_mad=EXCLUDED.price_mad,comparison_price_mad=EXCLUDED.comparison_price_mad,stock_quantity=EXCLUDED.stock_quantity,available=EXCLUDED.available,image_id=EXCLUDED.image_id,updated_at=now()`,
-        [variantId,productId,variant.name,JSON.stringify(variant.selections),variant.priceMad,variant.comparisonPriceMad??null,variant.stockQuantity??null,variant.available,variant.imageId??null]);
+      await client.query(`INSERT INTO product_variants(id,product_id,name,selections,price_mad,comparison_price_mad,stock_quantity,available,image_id,retired_at,updated_at)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,selections=EXCLUDED.selections,price_mad=EXCLUDED.price_mad,comparison_price_mad=EXCLUDED.comparison_price_mad,stock_quantity=EXCLUDED.stock_quantity,available=EXCLUDED.available,image_id=EXCLUDED.image_id,retired_at=EXCLUDED.retired_at,updated_at=now()`,
+        [variantId,productId,variant.name,JSON.stringify(variant.selections),variant.priceMad,variant.comparisonPriceMad??null,variant.stockQuantity??null,variant.retired ? false : variant.available,variant.imageId??null,variant.retired ? (priorVariant?.retired_at || new Date()) : null]);
     }
-    if (retained.length) await client.query("DELETE FROM product_variants WHERE product_id=$1 AND NOT(id = ANY($2::text[]))", [productId,retained]);
-    else await client.query("DELETE FROM product_variants WHERE product_id=$1", [productId]);
+    await client.query("UPDATE product_variants SET retired_at=COALESCE(retired_at,now()),available=false,updated_at=now() WHERE product_id=$1 AND NOT(id = ANY($2::text[])) AND retired_at IS NULL", [productId,retained]);
     return productId;
   });
 }

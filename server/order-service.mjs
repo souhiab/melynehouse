@@ -57,12 +57,12 @@ export async function createOrder(db, config, input, idempotencyKey) {
     for (const line of lines) {
       // A null stock quantity means unverified inventory, never unlimited inventory.
       if (!line.variantId) throw conflict("A stocked product variant must be selected");
-      const variant = (await client.query("SELECT id,product_id,name,selections,price_mad,available,stock_quantity FROM product_variants WHERE id=$1 FOR UPDATE", [line.variantId])).rows[0];
-      if (!variant || variant.product_id !== line.productId || !variant.available || variant.stock_quantity == null || variant.stock_quantity < line.quantity) {
+      const variant = (await client.query("SELECT id,product_id,name,selections,price_mad,available,stock_quantity,retired_at FROM product_variants WHERE id=$1 FOR UPDATE", [line.variantId])).rows[0];
+      if (!variant || variant.product_id !== line.productId || variant.retired_at || !variant.available || variant.stock_quantity == null || variant.stock_quantity < line.quantity) {
         throw conflict("A selected variant is unavailable or has insufficient verified stock");
       }
       const reduced = await client.query(`UPDATE product_variants SET stock_quantity=$1,updated_at=now()
-        WHERE id=$2 AND product_id=$3 AND available=true AND stock_quantity IS NOT NULL AND stock_quantity >= $4 RETURNING id`,
+        WHERE id=$2 AND product_id=$3 AND available=true AND retired_at IS NULL AND stock_quantity IS NOT NULL AND stock_quantity >= $4 RETURNING id`,
       [variant.stock_quantity - line.quantity, line.variantId, line.productId, line.quantity]);
       if (!reduced.rowCount) throw conflict("A selected variant no longer has enough stock");
       const unitCents = Math.round(Number(variant.price_mad) * 100);

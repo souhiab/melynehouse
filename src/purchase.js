@@ -5,7 +5,7 @@ export function validateDirectPurchase(product, selected, quantity) {
     (selection) => selected[selection.option] === selection.value,
   ));
   if (product.availability !== "available" ||
-      !variant || variant.availability !== "available" || !Number.isInteger(variant.stockQuantity) || variant.stockQuantity <= 0) {
+      !variant || variant.retired || variant.availability !== "available" || !Number.isInteger(variant.stockQuantity) || variant.stockQuantity <= 0) {
     return { error: "هذه التوليفة غير متوفرة حالياً.", item: null };
   }
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99 ||
@@ -18,6 +18,13 @@ export function validateDirectPurchase(product, selected, quantity) {
     variantId: variant?.id || null,
     quantity,
   } };
+}
+
+export function cartItemUnavailable(item) {
+  const variant = item.variant;
+  return item.product.availability !== "available" || !variant || variant.retired ||
+    variant.availability !== "available" || !Number.isInteger(variant.stockQuantity) ||
+    variant.stockQuantity <= 0 || item.quantity > variant.stockQuantity;
 }
 
 export function checkoutLines(cart, directPurchase, directMode) {

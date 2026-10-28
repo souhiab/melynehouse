@@ -2,8 +2,26 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { deriveProductStats, filterOwnerProducts } from "../src/admin/product-stats.js";
 import { readSidebarPreference, saveSidebarPreference } from "../src/admin/sidebar-preference.js";
+import { buildVariants, optionValuesFromText } from "../src/admin/variant-lifecycle.js";
 
 const product = (id, status, name = id) => ({ id, status, displayName: name, name, sku: `SKU-${id}`, slug: id });
+
+test("removed combinations retire and re-added combinations reuse their original IDs", () => {
+  const option = (labels) => [{ id: "color", key: "color", name: "Color", values: labels.map((label) => ({ id: label, label })) }];
+  const original = ["Red", "Blue"].map((value) => ({ id: value, name: value, selections: [{ option: "Color", optionKey: "color", value }], priceMad: 100, stockQuantity: 2, available: true, retired: false }));
+  const removed = buildVariants(option(["Red"]), original, 100, null);
+  assert.equal(removed.find((variant) => variant.id === "Blue").retired, true);
+  assert.equal(removed.find((variant) => variant.id === "Blue").available, false);
+  const restoredOption = buildVariants(option(["Red", "Blue", "Green"]), removed, 100, null);
+  assert.equal(restoredOption.find((variant) => variant.id === "Blue").retired, true);
+  assert.equal(restoredOption.find((variant) => variant.id === "Blue").stockQuantity, 2);
+  assert.equal(restoredOption.find((variant) => variant.selections[0].value === "Green").id, undefined);
+});
+
+test("editing option text preserves exact imported labels and stable value IDs", () => {
+  const original = { id: "size-three", label: "3 ans ", secondaryLabel: "3 ans " };
+  assert.deepEqual(optionValuesFromText("3 ans , 4 ans", [original], "size"), [original, { id: "size-1", label: "4 ans", secondaryLabel: "4 ans" }]);
+});
 
 test("owner totals include archived records and visibility follows the public response", () => {
   const products = [product("a", "published"), product("b", "published"), product("c", "hidden"), product("d", "archived")];

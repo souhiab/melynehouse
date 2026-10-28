@@ -8,7 +8,7 @@ import {
 import storeData from "../data/store.json";
 import { colorOptionFor, imagesForColor, thumbnailForColor } from "./product-colors.js";
 import { generalWhatsAppMessage, productWhatsAppMessage, whatsAppHref } from "./whatsapp.js";
-import { checkoutLines, displayPriceForSelection, validateDirectPurchase } from "./purchase.js";
+import { cartItemUnavailable, checkoutLines, displayPriceForSelection, validateDirectPurchase } from "./purchase.js";
 
 const categoryOrder = ["ملابس-رجالية", "women", "kids"];
 const fallbackCategories = [...storeData.categories].sort((a, b) => categoryOrder.indexOf(a.slug) - categoryOrder.indexOf(b.slug));
@@ -62,7 +62,7 @@ function Link({ to, navigate, children, className, ariaLabel, onClick }) {
 const formatPrice = (value) => value == null ? "السعر غير متوفر" : money.format(value);
 const productPath = (product) => `/products/${encodeURIComponent(product.slug)}`;
 const getProduct = (products, id) => products.find((product) => product.id === id);
-const variantCanBeBought = (variant) => variant.availability === "available" && Number.isInteger(variant.stockQuantity) && variant.stockQuantity > 0;
+const variantCanBeBought = (variant) => !variant.retired && variant.availability === "available" && Number.isInteger(variant.stockQuantity) && variant.stockQuantity > 0;
 const productHasStock = (product) => product.availability === "available" && product.variants.some(variantCanBeBought);
 const availableVariant = (product) => product.variants.find(variantCanBeBought) || null;
 const quantityFor = (items) => items.reduce((sum, item) => sum + item.quantity, 0);
@@ -261,7 +261,6 @@ function WishlistPage({ wishlist, navigate, toggleWishlist, products }) {
 }
 
 function cartDetails(cart, products) { return cart.map((item) => ({ ...item, product: getProduct(products, item.productId), variant: getProduct(products, item.productId)?.variants.find((variant) => variant.id === item.variantId) })).filter((item) => item.product); }
-function cartItemUnavailable(item) { return item.product.availability !== "available" || !item.variant || !variantCanBeBought(item.variant) || item.quantity > item.variant.stockQuantity; }
 
 function OrderSummary({ subtotal, navigate, checkout = false, blocked = false }) {
   return <aside className="order-summary"><h2>ملخص الطلب</h2><div><span>المجموع الفرعي</span><strong>{formatPrice(subtotal)}</strong></div><div><span>التوصيل</span><b>غير محسوب في هذا النموذج</b></div><div className="summary-total"><span>مجموع المنتجات دون التوصيل</span><strong>{formatPrice(subtotal)}</strong></div><p className="prototype-label">{blocked ? "تحتوي السلة على اختيار غير متوفر. احذفه قبل المتابعة." : "نموذج أولي — لا يتم تحصيل أي مبلغ."}</p>{!checkout && <button className="primary-button" disabled={blocked} onClick={() => navigate("/checkout")}>متابعة إتمام الطلب <ArrowLeft size={18} /></button>}<Link to="/shop" navigate={navigate} className="continue-link"><ArrowRight size={16} /> متابعة التسوق</Link></aside>;

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { checkoutLines, displayPriceForSelection, validateDirectPurchase } from "../src/purchase.js";
+import { cartItemUnavailable, checkoutLines, displayPriceForSelection, validateDirectPurchase } from "../src/purchase.js";
 
 test("selected variant never inherits an unrelated product comparison price", () => {
   const item = { price: { current: 100, comparison: 150 } };
@@ -42,4 +42,13 @@ test("Buy Now asks for missing options and rejects unavailable selections", () =
 test("Buy Now rejects stock whose quantity is unknown", () => {
   const unverified = { ...product, variants: product.variants.map((variant) => variant.id === available.id ? { ...variant, stockQuantity: null } : variant) };
   assert.ok(validateDirectPurchase(unverified, selected, 1).error);
+});
+
+test("retired variants cannot be bought directly or through a saved cart", () => {
+  const retired = { ...available, retired: true };
+  const staleProduct = { ...product, variants: product.variants.map((variant) => variant.id === available.id ? retired : variant) };
+  assert.ok(validateDirectPurchase(staleProduct, selected, 1).error);
+  assert.equal(cartItemUnavailable({ product: staleProduct, variant: retired, quantity: 1 }), true);
+  const publicProduct = { ...product, variants: product.variants.filter((variant) => variant.id !== available.id) };
+  assert.equal(cartItemUnavailable({ product: publicProduct, variant: undefined, quantity: 1 }), true);
 });
