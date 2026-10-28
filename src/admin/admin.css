@@ -18,8 +18,8 @@
 .owner-sidebar-head button:active, .owner-mobile-bar button:active { transform: scale(.95); }
 .owner-sidebar-toggle svg { width: 27px; height: 27px; }
 .owner-sidebar .owner-name { min-height: 20px; margin: 7px 0 0; font-size: 12px; }
-.owner-sidebar nav button, .owner-app .owner-sidebar > a, .owner-sidebar .logout { min-height: 52px; position: relative; gap: 11px; padding: 12px 10px; font-size: 1.2em; line-height: 1.35; white-space: nowrap; }
-.owner-sidebar nav svg, .owner-sidebar > a svg, .owner-sidebar .logout svg { width: 27px; height: 27px; }
+.owner-sidebar nav button, .owner-sidebar nav a, .owner-app .owner-sidebar > a, .owner-sidebar .logout { min-height: 46px; position: relative; gap: 8px; padding: 9px 8px; font-size: 1em; line-height: 1.35; white-space: nowrap; }
+.owner-sidebar nav svg, .owner-sidebar > a svg, .owner-sidebar .logout svg { width: 22px; height: 22px; }
 .owner-sidebar nav button:hover, .owner-sidebar > a:hover, .owner-sidebar .logout:hover { background: #ffffff12; color: white; }
 .owner-sidebar nav button.active { box-shadow: inset -3px 0 #cfad83; }
 .owner-sidebar svg { flex: none; }
@@ -115,15 +115,15 @@
 .owner-app { --owner-sidebar-width: 256px; }
 .owner-app > .owner-sidebar { display: flex; flex-direction: column; overflow: hidden; }
 .owner-sidebar nav { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #ffffff55 transparent; }
-.owner-nav-group { display: block; margin: 16px 8px 3px; color: #b6c6bd; font-size: 12px; font-weight: 700; }
+.owner-nav-group { display: block; margin: 12px 8px 3px; color: #b6c6bd; font-size: 11px; font-weight: 700; }
 .owner-nav-parent { display: flex; align-items: center; min-width: 0; }
 .owner-nav-parent > button:first-child { min-width: 0; flex: 1; }
 .owner-app .owner-sidebar .owner-products-expand { width: 34px; height: 42px; min-height: 42px; display: grid; place-items: center; flex: 0 0 34px; padding: 0; }
 .owner-products-expand[aria-expanded="true"] svg { transform: rotate(180deg); }
 .owner-product-subnav { display: grid; gap: 3px; padding-inline-start: 12px; }
 .owner-product-subnav[hidden] { display: none; }
-.owner-sidebar .owner-subitem { min-height: 42px; padding: 8px; font-size: 1.04em; }
-.owner-sidebar .owner-subitem svg { width: 23px; height: 23px; }
+.owner-sidebar .owner-subitem { min-height: 40px; padding: 7px; font-size: .94em; }
+.owner-sidebar .owner-subitem svg { width: 20px; height: 20px; }
 .owner-app .owner-sidebar .logout { position: static; width: 100%; margin-top: 10px; flex: none; }
 .owner-app .owner-sidebar nav button:disabled { opacity: .5; cursor: not-allowed; }
 .owner-pagination { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 20px 0; }
