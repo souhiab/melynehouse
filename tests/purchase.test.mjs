@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { checkoutLines, validateDirectPurchase } from "../src/purchase.js";
+import { checkoutLines, displayPriceForSelection, validateDirectPurchase } from "../src/purchase.js";
+
+test("selected variant never inherits an unrelated product comparison price", () => {
+  const item = { price: { current: 100, comparison: 150 } };
+  assert.deepEqual(displayPriceForSelection(item), { current: 100, comparison: 150 });
+  assert.deepEqual(displayPriceForSelection(item, { price: { current: 200, comparison: null } }), { current: 200, comparison: null });
+});
 
 const products = JSON.parse(fs.readFileSync(new URL("../data/products.json", import.meta.url), "utf8")).products;
 const product = products.find((entry) => entry.variants.some((variant) => variant.availability === "available"));

@@ -12,7 +12,7 @@ export const imageColorSchema = z.object({ colorLabel: z.string().min(1).max(200
 
 const optionSchema = z.object({
   id: identifier, name: z.string().trim().min(1).max(120), key: z.string().max(120).nullable().optional(),
-  values: z.array(z.object({ id: identifier, label: z.string().trim().min(1).max(200), secondaryLabel: z.string().max(200).nullable().optional() }).strict()).max(100),
+  values: z.array(z.object({ id: identifier, label: z.string().min(1).max(200).refine((label) => label.trim().length > 0), secondaryLabel: z.string().max(200).nullable().optional() }).strict()).max(100),
 }).strict();
 
 export const variantSchema = z.object({
@@ -51,8 +51,19 @@ export const productSchema = z.object({
   for (const [index, option] of value.options.entries()) {
     if (new Set(option.values.map((item) => item.label)).size !== option.values.length) ctx.addIssue({ code: "custom", path: ["options", index, "values"], message: "Option values must be unique" });
   }
+  const activeOptions = value.options.filter((option) => option.values.length);
   const variants = new Set();
   for (const [index, variant] of value.variants.entries()) {
+    const selectedOptions = new Set();
+    if (variant.selections.length !== activeOptions.length) ctx.addIssue({ code: "custom", path: ["variants", index, "selections"], message: "Each variant must select every active option" });
+    for (const [selectionIndex, selection] of variant.selections.entries()) {
+      const option = activeOptions.find((item) => (item.key || item.name) === (selection.optionKey || selection.option) || item.name === selection.option);
+      const optionId = option?.id;
+      if (!option || selectedOptions.has(optionId) || !option.values.some((item) => item.label === selection.value)) {
+        ctx.addIssue({ code: "custom", path: ["variants", index, "selections", selectionIndex], message: "Variant selection must match a unique product option and value" });
+      }
+      if (optionId) selectedOptions.add(optionId);
+    }
     const signature = variant.selections.map((selection) => `${selection.optionKey || selection.option}=${selection.value}`).sort().join("|");
     if (variants.has(signature)) ctx.addIssue({ code: "custom", path: ["variants", index, "selections"], message: "Variant selections must be unique" });
     variants.add(signature);

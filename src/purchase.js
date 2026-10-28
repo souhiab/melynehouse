@@ -23,3 +23,9 @@ export function validateDirectPurchase(product, selected, quantity) {
 export function checkoutLines(cart, directPurchase, directMode) {
   return directMode ? (directPurchase ? [directPurchase] : []) : cart;
 }
+
+export function displayPriceForSelection(product, variant = null) {
+  return variant
+    ? { current: variant.price.current, comparison: variant.price.comparison }
+    : { current: product.price.current, comparison: product.price.comparison };
+}

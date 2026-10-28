@@ -544,7 +544,7 @@ function OrdersPanel({ data, reload }) {
   return (
     <section>
       {statusError && <div className="owner-error" role="alert">{statusError}</div>}
-      <div className="panel-title"><div><h1>طلبات الدفع عند الاستلام</h1><p>بيانات العملاء ظاهرة داخل هذه الصفحة المحمية فقط.</p></div></div>
+      <div className="panel-title"><div><h1>طلبات الدفع عند الاستلام</h1><p>بيانات العملاء ظاهرة داخل هذه الصفحة المحمية فقط. يُعرض أحدث {data.orders.length} طلب من أصل {data.orderSummary?.total ?? "—"}.</p></div></div>
       <div className="orders-table" role="region" aria-label="الطلبات" tabIndex="0"><table><thead><tr><th>الطلب</th><th>العميل</th><th>المجموع</th><th>الحالة</th><th>Google Sheet</th><th>التاريخ</th></tr></thead><tbody>{data.orders.map((order) => <tr key={order.id}><td><strong>{order.order_number}</strong></td><td>{order.customer.name}<small>{order.customer.phone}<br />{order.customer.city}</small></td><td>{money(order.total_mad)}</td><td><select value={order.status} onChange={async (event) => { try { setStatusError(""); await api(`/api/admin/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: event.target.value }) }); await reload(); } catch (error) { setStatusError(error.message); await reload(); } }}>{statuses.map((status) => <option key={status} disabled={status !== order.status && !allowed[order.status]?.includes(status)}>{status}</option>)}</select></td><td><span className={`sync ${order.sheet_sync_status}`}>{order.sheet_sync_status}</span>{order.sheet_sync_status === "failed" && <button className="quiet" onClick={async () => { await api(`/api/admin/orders/${order.id}/retry-sheet-sync`, { method: "POST", body: "{}" }); await reload(); }}>إعادة المحاولة</button>}</td><td>{new Date(order.created_at).toLocaleString("ar-MA")}</td></tr>)}</tbody></table>{!data.orders.length && <p className="empty-admin">لا توجد طلبات بعد.</p>}</div>
     </section>
   );
@@ -560,12 +560,12 @@ export function AdminApp() {
   const mobileMenuRef = useRef(null);
   const mobileCloseRef = useRef(null);
   const mobileWasOpen = useRef(false);
-  const [data, setData] = useState({ products: [], publicProducts: [], categories: [], banners: [], orders: [] });
+  const [data, setData] = useState({ products: [], publicProducts: [], categories: [], banners: [], orders: [], orderSummary: null });
   const [error, setError] = useState("");
   const load = async () => {
     try {
       const [products, storefront, banners, orders] = await Promise.all([api("/api/admin/products"), api("/api/public/storefront", { cache: "no-store" }), api("/api/admin/banners"), api("/api/admin/orders")]);
-      setData({ products: products.products, publicProducts: storefront.products, categories: storefront.categories, banners: banners.banners, orders: orders.orders });
+      setData({ products: products.products, publicProducts: storefront.products, categories: storefront.categories, banners: banners.banners, orders: orders.orders, orderSummary: orders.summary });
       setError("");
     } catch (exception) {
       setError(exception.message);

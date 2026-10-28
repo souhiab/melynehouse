@@ -99,13 +99,17 @@ test("banner publishing, ordering and archival are reflected publicly", async (t
 
 test("COD submission revalidates server price and availability and keeps customer data private", async (t) => {
   const system = await setupTestSystem(); t.after(async()=>{await system.db.end();await system.cleanup()});
-  const catalog=(await request(system.app).get("/api/public/storefront").expect(200)).body;
+  const catalogResponse=await request(system.app).get("/api/public/storefront").expect(200);
+  assert.equal(catalogResponse.headers["cache-control"],"no-store");
+  const catalog=catalogResponse.body;
   const product=catalog.products.find((entry)=>entry.variants.some((variant)=>variant.availability==="available" && variant.stockQuantity>=2)); const variant=product.variants.find((entry)=>entry.availability==="available" && entry.stockQuantity>=2);
   const created=await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},note:"",items:[{productId:product.id,variantId:variant.id,quantity:2}]}).expect(201);
   assert.equal(created.body.totalMad,variant.price.current*2);
   await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,quantity:1}]}).expect(409);
   const publicAgain=await request(system.app).get("/api/public/storefront").expect(200); assert.equal(JSON.stringify(publicAgain.body).includes("0600000000"),false);
   const {agent}=await authenticated(system); const orders=await agent.get("/api/admin/orders").expect(200); assert.equal(orders.body.orders[0].customer.phone,"0600000000");
+  assert.equal(orders.body.summary.total,1); assert.equal(orders.body.summary.accepted,1); assert.equal(orders.body.summary.open,1);
+  assert.equal(orders.body.summary.acceptedTotalMad,created.body.totalMad);
   await system.db.query("UPDATE product_variants SET available=false WHERE id=$1",[variant.id]);
   await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(409);
 });

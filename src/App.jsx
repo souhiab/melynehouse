@@ -3,12 +3,12 @@ import {
   ArrowLeft, ArrowRight, CaretDown, Check, CreditCard, EnvelopeSimple,
   FacebookLogo, HandCoins, Heart, InstagramLogo, List, MagnifyingGlass,
   Lightning, MapPin, Minus, Package, Phone, Plus, ShieldCheck, ShoppingBag,
-  SlidersHorizontal, TiktokLogo, Trash, Truck, User, WhatsappLogo, X,
+  SlidersHorizontal, TiktokLogo, Trash, Truck, WhatsappLogo, X,
 } from "@phosphor-icons/react";
 import storeData from "../data/store.json";
 import { colorOptionFor, imagesForColor, thumbnailForColor } from "./product-colors.js";
 import { generalWhatsAppMessage, productWhatsAppMessage, whatsAppHref } from "./whatsapp.js";
-import { checkoutLines, validateDirectPurchase } from "./purchase.js";
+import { checkoutLines, displayPriceForSelection, validateDirectPurchase } from "./purchase.js";
 
 const categoryOrder = ["ملابس-رجالية", "women", "kids"];
 const fallbackCategories = [...storeData.categories].sort((a, b) => categoryOrder.indexOf(a.slug) - categoryOrder.indexOf(b.slug));
@@ -87,7 +87,7 @@ function Header({ navigate, cart, wishlist, onMenu, onSearch }) {
       <div className="header-actions">
         <Link to="/cart" navigate={navigate} className="header-action" ariaLabel={`السلة، ${quantityFor(cart)} منتجات`}><span className="icon-count-wrap"><ShoppingBag size={27} weight="light" />{quantityFor(cart) > 0 && <b>{quantityFor(cart)}</b>}</span><span>السلة</span></Link>
         <Link to="/wishlist" navigate={navigate} className="header-action" ariaLabel={`المفضلة، ${wishlist.length} منتجات`}><span className="icon-count-wrap"><Heart size={27} weight="light" />{wishlist.length > 0 && <b>{wishlist.length}</b>}</span><span>المفضلة</span></Link>
-        <button className="header-action account-button" onClick={() => navigate("/pages/اتصل-بنا")} aria-label="تواصل معنا"><User size={27} weight="light" /><span>حسابي</span></button>
+        <button className="header-action account-button" onClick={() => navigate("/pages/اتصل-بنا")} aria-label="تواصل معنا"><EnvelopeSimple size={27} weight="light" /><span>تواصل معنا</span></button>
       </div>
       <button className="mobile-icon search-trigger" onClick={onSearch} aria-label="فتح البحث"><MagnifyingGlass size={25} /></button>
     </div>
@@ -137,8 +137,7 @@ function CategoryTiles({ navigate, categories }) {
 }
 
 function Price({ product, variant, compact = false }) {
-  const current = variant?.price.current ?? product.price.current;
-  const comparison = variant?.price.comparison ?? product.price.comparison;
+  const { current, comparison } = displayPriceForSelection(product, variant);
   return <div className={`price-row ${compact ? "compact" : ""}`}><strong>{formatPrice(current)}</strong>{comparison && <del>{formatPrice(comparison)}</del>}</div>;
 }
 
@@ -265,7 +264,7 @@ function cartDetails(cart, products) { return cart.map((item) => ({ ...item, pro
 function cartItemUnavailable(item) { return item.product.availability !== "available" || !item.variant || !variantCanBeBought(item.variant) || item.quantity > item.variant.stockQuantity; }
 
 function OrderSummary({ subtotal, navigate, checkout = false, blocked = false }) {
-  return <aside className="order-summary"><h2>ملخص الطلب</h2><div><span>المجموع الفرعي</span><strong>{formatPrice(subtotal)}</strong></div><div><span>التوصيل</span><b>يؤكد عند الطلب</b></div><div className="summary-total"><span>المجموع</span><strong>{formatPrice(subtotal)}</strong></div><p className="prototype-label">{blocked ? "تحتوي السلة على اختيار غير متوفر. احذفه قبل المتابعة." : "نموذج أولي — لا يتم تحصيل أي مبلغ."}</p>{!checkout && <button className="primary-button" disabled={blocked} onClick={() => navigate("/checkout")}>متابعة إتمام الطلب <ArrowLeft size={18} /></button>}<Link to="/shop" navigate={navigate} className="continue-link"><ArrowRight size={16} /> متابعة التسوق</Link></aside>;
+  return <aside className="order-summary"><h2>ملخص الطلب</h2><div><span>المجموع الفرعي</span><strong>{formatPrice(subtotal)}</strong></div><div><span>التوصيل</span><b>غير محسوب في هذا النموذج</b></div><div className="summary-total"><span>مجموع المنتجات دون التوصيل</span><strong>{formatPrice(subtotal)}</strong></div><p className="prototype-label">{blocked ? "تحتوي السلة على اختيار غير متوفر. احذفه قبل المتابعة." : "نموذج أولي — لا يتم تحصيل أي مبلغ."}</p>{!checkout && <button className="primary-button" disabled={blocked} onClick={() => navigate("/checkout")}>متابعة إتمام الطلب <ArrowLeft size={18} /></button>}<Link to="/shop" navigate={navigate} className="continue-link"><ArrowRight size={16} /> متابعة التسوق</Link></aside>;
 }
 
 function CartPage({ cart, setCart, navigate, products }) {
@@ -364,12 +363,20 @@ export function App() {
   const generalWhatsAppHref = whatsAppHref(storeData.whatsappSupportNumber, generalWhatsAppMessage);
   useEffect(() => {
     let active = true;
-    fetch("/api/public/storefront").then(async (response) => {
-      if (!response.ok) throw new Error("Catalog API unavailable");
-      const next = await response.json();
-      if (active) { setStorefront({ ...next, categories: next.categories?.length ? next.categories : fallbackCategories }); setCatalogState("ready"); }
-    }).catch(() => { if (active) setCatalogState("error"); });
-    return () => { active = false; };
+    let latestRequest = 0;
+    const refresh = () => {
+      const request = ++latestRequest;
+      fetch("/api/public/storefront", { cache: "no-store" }).then(async (response) => {
+        if (!response.ok) throw new Error("Catalog API unavailable");
+        const next = await response.json();
+        if (active && request === latestRequest) { setStorefront({ ...next, categories: next.categories?.length ? next.categories : fallbackCategories }); setCatalogState("ready"); }
+      }).catch(() => { if (active && request === latestRequest) setCatalogState("error"); });
+    };
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => { active = false; window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refreshWhenVisible); };
   }, []);
   useEffect(() => {
     const product = pathname.startsWith("/products/") ? storefront.products.find((entry) => entry.slug === decodeURIComponent(pathname.slice(10))) : null;

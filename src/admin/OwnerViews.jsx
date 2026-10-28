@@ -3,15 +3,12 @@ import { ChartBar, Package, WarningCircle } from "@phosphor-icons/react";
 const money = (value) => new Intl.NumberFormat("ar-MA", { style: "currency", currency: "MAD" }).format(Number(value || 0));
 
 export function DashboardPanel({ data, goTo }) {
-  const openOrders = data.orders.filter((order) => !["delivered", "cancelled"].includes(order.status));
   const published = data.products.filter((product) => product.status === "published");
-  return <section className="owner-simple-panel"><div className="panel-title"><div><h1>لوحة التحكم</h1><p>نظرة سريعة على بيانات المتجر المحلية.</p></div></div><div className="owner-simple-cards"><article><Package size={28} /><strong>{published.length}</strong><span>منتج منشور</span></article><article><ChartBar size={28} /><strong>{openOrders.length}</strong><span>طلب قيد المتابعة</span></article><article><WarningCircle size={28} /><strong>{data.products.filter((product) => product.status === "draft").length}</strong><span>منتج مسودة</span></article></div><div className="owner-simple-actions"><button type="button" onClick={() => goTo("products")}>إدارة المنتجات</button><button type="button" onClick={() => goTo("orders")}>عرض الطلبات</button></div></section>;
+  return <section className="owner-simple-panel"><div className="panel-title"><div><h1>لوحة التحكم</h1><p>نظرة سريعة على بيانات المتجر المحلية.</p></div></div><div className="owner-simple-cards"><article><Package size={28} /><strong>{published.length}</strong><span>منتج منشور</span></article><article><ChartBar size={28} /><strong>{data.orderSummary?.open ?? "—"}</strong><span>طلب قيد المتابعة</span></article><article><WarningCircle size={28} /><strong>{data.products.filter((product) => product.status === "draft").length}</strong><span>منتج مسودة</span></article></div><div className="owner-simple-actions"><button type="button" onClick={() => goTo("products")}>إدارة المنتجات</button><button type="button" onClick={() => goTo("orders")}>عرض الطلبات</button></div></section>;
 }
 
 export function AnalyticsPanel({ data }) {
-  const accepted = data.orders.filter((order) => order.status !== "cancelled");
-  const total = accepted.reduce((sum, order) => sum + Number(order.total_mad || 0), 0);
-  return <section className="owner-simple-panel"><div className="panel-title"><div><h1>الإحصائيات</h1><p>أرقام الطلبات المحفوظة محلياً فقط؛ لا تتوفر بيانات الزوار أو معدل التحويل.</p></div></div><div className="owner-simple-cards"><article><strong>{data.orders.length}</strong><span>كل الطلبات</span></article><article><strong>{accepted.length}</strong><span>طلبات غير ملغاة</span></article><article><strong>{money(total)}</strong><span>قيمة الطلبات غير الملغاة، ليست إيراداً محصلاً</span></article></div></section>;
+  return <section className="owner-simple-panel"><div className="panel-title"><div><h1>الإحصائيات</h1><p>أرقام الطلبات المحفوظة محلياً فقط؛ لا تتوفر بيانات الزوار أو معدل التحويل.</p></div></div><div className="owner-simple-cards"><article><strong>{data.orderSummary?.total ?? "—"}</strong><span>كل الطلبات</span></article><article><strong>{data.orderSummary?.accepted ?? "—"}</strong><span>طلبات غير ملغاة</span></article><article><strong>{data.orderSummary ? money(data.orderSummary.acceptedTotalMad) : "—"}</strong><span>قيمة الطلبات غير الملغاة، ليست إيراداً محصلاً</span></article></div></section>;
 }
 
 export function CollectionsPanel({ data }) {
