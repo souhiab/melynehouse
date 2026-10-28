@@ -3,8 +3,22 @@ import test from "node:test";
 import { deriveProductStats, filterOwnerProducts } from "../src/admin/product-stats.js";
 import { readSidebarPreference, saveSidebarPreference } from "../src/admin/sidebar-preference.js";
 import { buildVariants, optionValuesFromText } from "../src/admin/variant-lifecycle.js";
+import { ownerNavigation, ownerPathForTab, ownerSectionForTab, ownerTabFromPath } from "../src/admin/owner-navigation.js";
 
 const product = (id, status, name = id) => ({ id, status, displayName: name, name, sku: `SKU-${id}`, slug: id });
+
+test("owner child routes, parent destinations and planned navigation are explicit", () => {
+  assert.equal(ownerTabFromPath("/owner/orders/new"), "new-order");
+  assert.equal(ownerSectionForTab("new-order"), "orders");
+  assert.equal(ownerPathForTab("new-order"), "/owner/orders/new");
+  assert.equal(ownerPathForTab("orders"), "/owner/orders");
+  assert.equal(ownerPathForTab("products"), "/owner/products");
+  assert.equal(ownerTabFromPath("/owner/products/new"), "add-product");
+  assert.equal(ownerTabFromPath("/owner"), "products");
+  const sections = ownerNavigation.flatMap((group) => group.sections || []);
+  assert.deepEqual(sections.map((section) => section.id), ["orders", "products"]);
+  assert.deepEqual(sections[0].children.filter((item) => item.planned).map((item) => item.id), ["customers", "payments", "invoices"]);
+});
 
 test("removed combinations retire and re-added combinations reuse their original IDs", () => {
   const option = (labels) => [{ id: "color", key: "color", name: "Color", values: labels.map((label) => ({ id: label, label })) }];

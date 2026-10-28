@@ -118,10 +118,14 @@
 .owner-nav-group { display: block; margin: 12px 8px 3px; color: #b6c6bd; font-size: 11px; font-weight: 700; }
 .owner-nav-parent { display: flex; align-items: center; min-width: 0; }
 .owner-nav-parent > button:first-child { min-width: 0; flex: 1; }
-.owner-app .owner-sidebar .owner-products-expand { width: 34px; height: 42px; min-height: 42px; display: grid; place-items: center; flex: 0 0 34px; padding: 0; }
-.owner-products-expand[aria-expanded="true"] svg { transform: rotate(180deg); }
-.owner-product-subnav { display: grid; gap: 3px; padding-inline-start: 12px; }
-.owner-product-subnav[hidden] { display: none; }
+.owner-nav-group-block { display: grid; gap: 3px; }
+.owner-nav-parent > button.section-current { color: white; }
+.owner-app .owner-sidebar .owner-section-expand { width: 34px; height: 42px; min-height: 42px; display: grid; place-items: center; flex: 0 0 34px; padding: 0; }
+.owner-section-expand[aria-expanded="true"] svg { transform: rotate(180deg); }
+.owner-section-expand svg { transition: transform .18s ease; }
+.owner-section-subnav { display: grid; gap: 3px; max-height: 0; opacity: 0; overflow: hidden; visibility: hidden; padding-inline-start: 12px; transition: max-height .2s ease, opacity .15s ease, visibility .2s; }
+.owner-section-subnav.is-open { max-height: 420px; opacity: 1; visibility: visible; }
+.owner-sidebar .owner-nav-planned small { color: #b5c2b9; font-size: 10px; }
 .owner-sidebar .owner-subitem { min-height: 40px; padding: 7px; font-size: .94em; }
 .owner-sidebar .owner-subitem svg { width: 20px; height: 20px; }
 .owner-app .owner-sidebar .logout { position: static; width: 100%; margin-top: 10px; flex: none; }
@@ -193,12 +197,15 @@
 .owner-app .owner-save-bar .quiet { background: white; color: var(--owner-green); border: 1px solid var(--owner-line); }
 @media (min-width: 801px) {
   .owner-app.is-collapsed .owner-sidebar .logout { width: 100%; }
-  .owner-app.is-collapsed .owner-nav-group, .owner-app.is-collapsed .owner-product-subnav, .owner-app.is-collapsed .owner-products-expand { display: none; }
+  .owner-app.is-collapsed .owner-nav-group { display: none; }
+  .owner-app.is-collapsed .owner-section-expand, .owner-app.is-collapsed .owner-section-subnav { display: none; }
+  .owner-app.is-collapsed .owner-nav-parent > button.section-current { background: #ffffff17; box-shadow: inset -3px 0 #cfad83; }
 }
 @media (max-width: 1160px) { .owner-general-layout { grid-template-columns: 1fr; } }
 @media (max-width: 800px) {
   .owner-app > .owner-sidebar { overflow-y: auto; }
   .owner-sidebar nav { flex: none; overflow: visible; }
+  .owner-app .owner-sidebar .owner-section-expand { padding: 0 !important; justify-content: center !important; }
   .owner-app .owner-sidebar .logout { width: 100%; }
   .owner-simple-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .owner-custom-option { grid-template-columns: 1fr; }
@@ -212,3 +219,20 @@
   .owner-save-bar label select { flex: 1; }
   .owner-app .owner-save-bar button { flex: 1; }
 }
+
+.owner-order-items { display: grid; gap: 7px; margin-top: 8px; }
+.owner-order-item { display: flex; align-items: center; gap: 8px; min-width: 220px; }
+.owner-order-item img, .owner-order-image-empty { width: 42px; height: 42px; flex: none; border-radius: 7px; object-fit: cover; background: var(--owner-soft); }
+.owner-order-image-empty { display: grid; place-items: center; color: var(--owner-green); }
+.owner-order-item span:last-child { min-width: 0; }
+.owner-order-item strong { display: block; max-width: 270px; overflow-wrap: anywhere; }
+.owner-order-item small { line-height: 1.4; }
+.owner-manual-order { padding: 20px; }
+.owner-manual-order h2 { margin-top: 24px; }
+.owner-manual-line { display: grid; grid-template-columns: minmax(180px,1.3fr) minmax(200px,2fr) 90px auto; align-items: end; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--owner-line); }
+.owner-manual-line label { display: grid; gap: 5px; margin: 0; }
+.owner-manual-line select, .owner-manual-line input { width: 100%; }
+.owner-manual-line .danger { min-height: 42px; }
+@media (max-width: 900px) { .owner-manual-line { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .owner-manual-line { grid-template-columns: 1fr; } .owner-order-item { min-width: 180px; } }
+@media (prefers-reduced-motion: reduce) { .owner-section-subnav, .owner-section-expand svg { transition: none; } }

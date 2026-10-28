@@ -24,13 +24,16 @@ export function combineOrderLines(items) {
   return lines;
 }
 
-export function orderRequestHash(input, lines) {
-  return crypto.createHash("sha256").update(JSON.stringify({ customer: input.customer, note: input.note, items: lines })).digest("hex");
+export function orderRequestHash(input, lines, source = "website") {
+  // Keep the original website hash stable so retries of pre-migration orders still replay.
+  const request = { customer: input.customer, note: input.note, items: lines };
+  if (source !== "website") request.source = source;
+  return crypto.createHash("sha256").update(JSON.stringify(request)).digest("hex");
 }
 
-export async function createOrder(db, config, input, idempotencyKey) {
+export async function createOrder(db, config, input, idempotencyKey, source = "website") {
   const lines = combineOrderLines(input.items);
-  const requestHash = orderRequestHash(input, lines);
+  const requestHash = orderRequestHash(input, lines, source);
   return transaction(db, async (client) => {
     // The conflicting UPDATE locks the key until the first transaction commits or rolls back.
     const claim = (await client.query(`INSERT INTO order_requests(idempotency_key,request_hash)
@@ -74,9 +77,9 @@ export async function createOrder(db, config, input, idempotencyKey) {
     const orderNumber = `MLY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
     const syncStatus = config.googleSheetsWebhookUrl ? "pending" : "disabled";
     const total = (subtotalCents / 100).toFixed(2);
-    await client.query(`INSERT INTO orders(id,order_number,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,idempotency_key,request_hash,inventory_state)
-      VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,'reserved')`,
-    [id, orderNumber, total, JSON.stringify(input.customer), input.note || null, syncStatus, idempotencyKey, requestHash]);
+    await client.query(`INSERT INTO orders(id,order_number,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,idempotency_key,request_hash,inventory_state,source)
+      VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,'reserved',$9)`,
+    [id, orderNumber, total, JSON.stringify(input.customer), input.note || null, syncStatus, idempotencyKey, requestHash, source]);
     for (const { line, variant, product, unitCents } of checked) {
       await client.query(`INSERT INTO order_items(id,order_id,product_id,variant_id,quantity,unit_price_mad,product_snapshot,variant_snapshot)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,

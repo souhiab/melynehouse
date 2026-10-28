@@ -82,6 +82,10 @@ export const orderSchema = z.object({
   items: z.array(z.object({ productId: identifier, variantId: identifier.nullable().optional(), quantity: z.number().int().min(1).max(99) }).strict()).min(1).max(50),
 }).strict();
 
+export const manualOrderSchema = orderSchema.safeExtend({
+  source: z.enum(["whatsapp", "instagram", "facebook", "website", "other"]),
+});
+
 export const bannerSchema = z.object({
   headingAr: z.string().trim().min(1).max(300), supportingTextAr: z.string().max(1000).nullable().optional(),
   buttonLabelAr: z.string().max(120).nullable().optional(), destinationUrl: z.string().max(2000).nullable().optional(),

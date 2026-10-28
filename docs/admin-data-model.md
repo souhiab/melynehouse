@@ -10,7 +10,7 @@ PostgreSQL is the source of truth. Google Sheets receives an operational copy of
 - `product_variants`: stable imported variant IDs, selections, server-authoritative price, stock and availability, image association, and nullable `retired_at`.
 - `product_images`: stable imported image IDs, persistent-storage keys/URLs, alternative text and explicit image order. Replacements keep the image ID so variant associations survive.
 - `banners`: Arabic content, desktop/mobile media, safe destination, status, active range and order.
-- `orders`: private COD customer record, totals calculated by the server, fulfillment status and Google Sheet synchronization state.
+- `orders`: private COD customer record, verified source (`website`, `whatsapp`, `instagram`, `facebook`, or `other`), totals calculated by the server, fulfillment status and Google Sheet synchronization state. Owner-created manual orders remain local with sheet synchronization disabled.
 - `order_items`: immutable product and variant snapshots as well as optional live foreign keys. Archiving a product never erases historical order details.
 - `admin_users` and `admin_sessions`: scrypt password hashes and hashed, expiring sessions/CSRF tokens. Plaintext passwords and session tokens are never stored.
 - `upload_assets`: immutable metadata and checksums for files written to persistent storage.

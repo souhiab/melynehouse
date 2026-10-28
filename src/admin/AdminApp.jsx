@@ -18,9 +18,12 @@ import {
   Package,
   Plus,
   SignOut,
+  ShoppingBag,
   Storefront,
   Tag,
   UploadSimple,
+  Users,
+  CreditCard,
   Warehouse,
   X,
 } from "@phosphor-icons/react";
@@ -30,6 +33,8 @@ import { colorOptionFor, colorOfVariant } from "../product-colors.js";
 import { deriveProductStats, filterOwnerProducts } from "./product-stats.js";
 import { readSidebarPreference, saveSidebarPreference } from "./sidebar-preference.js";
 import { buildVariants, optionValuesFromText, selectionSignature } from "./variant-lifecycle.js";
+import { NewOrderPanel, OrdersPanel } from "./OrderManagement.jsx";
+import { ownerNavigation, ownerPathForTab, ownerSectionForTab, ownerTabFromPath } from "./owner-navigation.js";
 import "./admin.css";
 
 const csrfToken = () => decodeURIComponent(
@@ -518,24 +523,29 @@ function BannersPanel({ data, reload }) {
   );
 }
 
-function OrdersPanel({ data, reload }) {
-  const statuses = ["new", "confirmed", "preparing", "shipped", "delivered", "cancelled"];
-  const allowed = { new: ["confirmed", "cancelled"], confirmed: ["preparing", "cancelled"], preparing: ["shipped", "cancelled"], shipped: ["delivered"], delivered: [], cancelled: [] };
-  const [statusError, setStatusError] = useState("");
-  return (
-    <section>
-      {statusError && <div className="owner-error" role="alert">{statusError}</div>}
-      <div className="panel-title"><div><h1>طلبات الدفع عند الاستلام</h1><p>بيانات العملاء ظاهرة داخل هذه الصفحة المحمية فقط. يُعرض أحدث {data.orders.length} طلب من أصل {data.orderSummary?.total ?? "—"}.</p></div></div>
-      <div className="orders-table" role="region" aria-label="الطلبات" tabIndex="0"><table><thead><tr><th>الطلب</th><th>العميل</th><th>المجموع</th><th>الحالة</th><th>Google Sheet</th><th>التاريخ</th></tr></thead><tbody>{data.orders.map((order) => <tr key={order.id}><td><strong>{order.order_number}</strong></td><td>{order.customer.name}<small>{order.customer.phone}<br />{order.customer.city}</small></td><td>{money(order.total_mad)}</td><td><select value={order.status} onChange={async (event) => { try { setStatusError(""); await api(`/api/admin/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: event.target.value }) }); await reload(); } catch (error) { setStatusError(error.message); await reload(); } }}>{statuses.map((status) => <option key={status} disabled={status !== order.status && !allowed[order.status]?.includes(status)}>{status}</option>)}</select></td><td><span className={`sync ${order.sheet_sync_status}`}>{order.sheet_sync_status}</span>{order.sheet_sync_status === "failed" && <button className="quiet" onClick={async () => { await api(`/api/admin/orders/${order.id}/retry-sheet-sync`, { method: "POST", body: "{}" }); await reload(); }}>إعادة المحاولة</button>}</td><td>{new Date(order.created_at).toLocaleString("ar-MA")}</td></tr>)}</tbody></table>{!data.orders.length && <p className="empty-admin">لا توجد طلبات بعد.</p>}</div>
-    </section>
-  );
+
+const ownerIcons = { House, ChartBar, ShoppingBag, Users, CreditCard, FileText, Package, Plus, Tag, Warehouse, Factory, ListNumbers, Image };
+
+function OwnerNavButton({ item, active, onNavigate, sub = false }) {
+  const Icon = ownerIcons[item.icon];
+  if (item.planned) return <button type="button" className="owner-nav-planned owner-subitem" disabled title={`${item.label} — غير متاح حالياً`} aria-label={`${item.label} — غير متاح حالياً`}><Icon size={20} aria-hidden="true" /><span className="owner-nav-label">{item.label} <small>قريباً</small></span></button>;
+  return <button type="button" className={`${active ? "active" : ""}${sub ? " owner-subitem" : ""}`} onClick={() => onNavigate(item.id)} aria-label={item.label} aria-current={active ? "page" : undefined} title={item.label} data-tooltip={item.label}><Icon size={22} aria-hidden="true" /><span className="owner-nav-label">{item.label}</span></button>;
+}
+
+function OwnerNavSection({ section, tab, expanded, onToggle, onNavigate }) {
+  const Icon = ownerIcons[section.icon];
+  const childActive = section.children.some((child) => child.id === tab);
+  return <div className="owner-nav-section"><div className="owner-nav-parent">
+    <button type="button" className={childActive ? "section-current" : ""} onClick={() => onNavigate(section.id)} aria-label={section.label} title={section.label} data-tooltip={section.label}><Icon size={22} aria-hidden="true" /><span className="owner-nav-label">{section.label}</span></button>
+    <button type="button" className="owner-section-expand" aria-label={expanded ? `طي أقسام ${section.label}` : `توسيع أقسام ${section.label}`} aria-expanded={expanded} aria-controls={`owner-${section.id}-subnav`} onClick={() => onToggle(section.id)}><CaretDown size={17} aria-hidden="true" /></button>
+  </div><div id={`owner-${section.id}-subnav`} className={`owner-section-subnav${expanded ? " is-open" : ""}`} aria-hidden={!expanded} inert={!expanded ? true : undefined}>{section.children.map((child) => <OwnerNavButton key={child.id} item={child} active={tab === child.id} onNavigate={onNavigate} sub />)}</div></div>;
 }
 
 export function AdminApp() {
   const [session, setSession] = useState(undefined);
-  const [tab, setTab] = useState("products");
+  const [tab, setTab] = useState(() => ownerTabFromPath(window.location.pathname));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarPreference());
-  const [productsOpen, setProductsOpen] = useState(true);
+  const [openSections, setOpenSections] = useState(() => ({ orders: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) === "orders", products: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) !== "orders" }));
   const [editorDirty, setEditorDirty] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef(null);
@@ -563,6 +573,16 @@ export function AdminApp() {
   useEffect(() => { authenticate(); }, []);
   useEffect(() => { saveSidebarPreference(undefined, sidebarCollapsed); }, [sidebarCollapsed]);
   useEffect(() => {
+    const onPopState = () => {
+      const nextTab = ownerTabFromPath(window.location.pathname);
+      setTab(nextTab);
+      const section = ownerSectionForTab(nextTab);
+      if (section) setOpenSections((current) => ({ ...current, [section]: true }));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+  useEffect(() => {
     if (mobileOpen) { mobileCloseRef.current?.focus(); mobileWasOpen.current = true; }
     else if (mobileWasOpen.current) { mobileMenuRef.current?.focus(); mobileWasOpen.current = false; }
   }, [mobileOpen]);
@@ -574,21 +594,26 @@ export function AdminApp() {
   }, [mobileOpen]);
   if (session === undefined) return <main className="owner-loading">جارٍ التحقق…</main>;
   if (!session) return <Login onLogin={authenticate} />;
-  const labels = { dashboard: "لوحة التحكم", analytics: "الإحصائيات", orders: "الطلبات", products: "جميع المنتجات", "add-product": "إضافة منتج", collections: "التصنيفات", stock: "المخزون", brands: "العلامات التجارية", suppliers: "الموردون", ordering: "ترتيب المنتجات", banners: "الواجهات" };
-  const goTo = (id) => { if (editorDirty && id !== tab && !window.confirm("هناك تغييرات غير محفوظة في المنتج. هل تريد المغادرة؟")) return; setTab(id); setMobileOpen(false); };
-  const navButton = (id, label, Icon, sub = false) => <button type="button" key={id} className={`${tab === id ? "active" : ""}${sub ? " owner-subitem" : ""}`} onClick={() => goTo(id)} aria-label={label} aria-current={tab === id ? "page" : undefined} title={label} data-tooltip={label}><Icon size={22} aria-hidden="true" /><span className="owner-nav-label">{label}</span></button>;
+  const labels = Object.fromEntries(ownerNavigation.flatMap((group) => [...(group.items || []), ...(group.sections || []).flatMap((section) => section.children)]).map((item) => [item.id, item.label]));
+  const goTo = (id) => {
+    if (editorDirty && id !== tab && !window.confirm("هناك تغييرات غير محفوظة في المنتج. هل تريد المغادرة؟")) return;
+    const path = ownerPathForTab(id);
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    setTab(id);
+    const section = ownerSectionForTab(id);
+    if (section) setOpenSections((current) => ({ ...current, [section]: true }));
+    setMobileOpen(false);
+  };
+  const toggleSection = (id) => setOpenSections((current) => ({ ...current, [id]: !current[id] }));
   return (
     <div className={`owner-app${sidebarCollapsed ? " is-collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`} dir="rtl">
       <header className="owner-mobile-bar" inert={mobileOpen ? true : undefined}><button ref={mobileMenuRef} type="button" onClick={() => setMobileOpen((value) => !value)} aria-label={mobileOpen ? "إغلاق قائمة لوحة المالك" : "فتح قائمة لوحة المالك"} aria-controls="owner-sidebar" aria-expanded={mobileOpen}><List size={25} /></button><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><span>{labels[tab]}</span></header>
       {mobileOpen && <button type="button" className="owner-mobile-backdrop" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة" />}
       <aside id="owner-sidebar" className="owner-sidebar"><div className="owner-sidebar-head"><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><button type="button" className="owner-sidebar-toggle" onClick={() => setSidebarCollapsed((value) => !value)} aria-label={sidebarCollapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"} aria-controls="owner-sidebar" aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}><List size={22} /></button><button ref={mobileCloseRef} type="button" className="owner-mobile-close" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة"><X size={22} /></button></div><p className="owner-name">{session.displayName}</p><nav aria-label="أقسام لوحة المالك">
-        <span className="owner-nav-group">الرئيسية</span>{navButton("dashboard", "لوحة التحكم", House)}{navButton("analytics", "الإحصائيات", ChartBar)}
-        <span className="owner-nav-group">التجارة الإلكترونية</span>{navButton("orders", "الطلبات", Storefront)}
-        <div className="owner-nav-parent"><button type="button" className={["products", "add-product", "collections", "stock", "brands", "suppliers"].includes(tab) ? "active" : ""} onClick={() => { if (sidebarCollapsed) { setSidebarCollapsed(false); setProductsOpen(true); } else goTo("products"); }} aria-label="المنتجات" title="المنتجات" data-tooltip="المنتجات"><Package size={22} aria-hidden="true" /><span className="owner-nav-label">المنتجات</span></button><button type="button" className="owner-products-expand" aria-label={productsOpen ? "طي أقسام المنتجات" : "توسيع أقسام المنتجات"} aria-expanded={productsOpen} aria-controls="owner-product-subnav" onClick={() => setProductsOpen((value) => !value)}><CaretDown size={17} /></button></div>
-        <div id="owner-product-subnav" className="owner-product-subnav" hidden={!productsOpen}>{navButton("products", "جميع المنتجات", Package, true)}{navButton("add-product", "إضافة منتج", Plus, true)}{navButton("collections", "التصنيفات", Tag, true)}{navButton("stock", "المخزون", Warehouse, true)}{navButton("brands", "العلامات التجارية", Tag, true)}{navButton("suppliers", "الموردون", Factory, true)}</div>
-        <span className="owner-nav-group">إدارة المتجر</span>{navButton("ordering", "ترتيب المنتجات", ListNumbers)}{navButton("banners", "الواجهات", Image)}<a href="/" target="_blank" rel="noreferrer" aria-label="عرض المتجر" title="عرض المتجر" data-tooltip="عرض المتجر"><Storefront size={22} aria-hidden="true" /><span className="owner-nav-label">عرض المتجر</span></a><button type="button" disabled title="إعدادات المتجر تحتاج تطويراً لاحقاً"><GearSix size={22} aria-hidden="true" /><span className="owner-nav-label">إعدادات المتجر</span></button>
+        {ownerNavigation.map((group) => <div className="owner-nav-group-block" key={group.heading}><span className="owner-nav-group">{group.heading}</span>{group.items?.map((item) => <OwnerNavButton key={item.id} item={item} active={tab === item.id} onNavigate={goTo} />)}{group.sections?.map((section) => <OwnerNavSection key={section.id} section={section} tab={tab} expanded={Boolean(openSections[section.id])} onToggle={toggleSection} onNavigate={goTo} />)}</div>)}
+        <a href="/" target="_blank" rel="noreferrer" aria-label="عرض المتجر" title="عرض المتجر" data-tooltip="عرض المتجر"><Storefront size={22} aria-hidden="true" /><span className="owner-nav-label">عرض المتجر</span></a><button type="button" disabled title="إعدادات المتجر تحتاج تطويراً لاحقاً"><GearSix size={22} aria-hidden="true" /><span className="owner-nav-label">إعدادات المتجر</span></button>
       </nav><button type="button" className="logout" onClick={async () => { if (editorDirty && !window.confirm("هناك تغييرات غير محفوظة. هل تريد تسجيل الخروج؟")) return; await api("/api/admin/session", { method: "DELETE" }); setSession(null); }} aria-label="خروج" title="خروج" data-tooltip="خروج"><SignOut size={22} aria-hidden="true" /><span className="owner-nav-label">خروج</span></button></aside>
-      <main inert={mobileOpen ? true : undefined}>{error && <div className="owner-error" role="alert">{error}</div>}{tab === "dashboard" && <DashboardPanel data={data} goTo={goTo} />}{tab === "analytics" && <AnalyticsPanel data={data} />}{["products", "add-product"].includes(tab) && <ProductsPanel key={tab} data={data} reload={load} startNew={tab === "add-product"} onDirtyChange={setEditorDirty} onDone={tab === "add-product" ? () => { setEditorDirty(false); setTab("products"); } : undefined} />}{tab === "collections" && <CollectionsPanel data={data} />}{tab === "stock" && <StockPanel data={data} />}{["brands", "suppliers"].includes(tab) && <MetadataPanel data={data} kind={tab} />}{tab === "ordering" && <OrderingPanel data={data} reload={load} />}{tab === "banners" && <BannersPanel data={data} reload={load} />}{tab === "orders" && <OrdersPanel data={data} reload={load} />}</main>
+      <main inert={mobileOpen ? true : undefined}>{error && <div className="owner-error" role="alert">{error}</div>}{tab === "dashboard" && <DashboardPanel data={data} goTo={goTo} />}{tab === "analytics" && <AnalyticsPanel data={data} />}{["products", "add-product"].includes(tab) && <ProductsPanel key={tab} data={data} reload={load} startNew={tab === "add-product"} onDirtyChange={setEditorDirty} onDone={tab === "add-product" ? () => { setEditorDirty(false); window.history.pushState({}, "", ownerPathForTab("products")); setTab("products"); } : undefined} />}{tab === "collections" && <CollectionsPanel data={data} />}{tab === "stock" && <StockPanel data={data} />}{["brands", "suppliers"].includes(tab) && <MetadataPanel data={data} kind={tab} />}{tab === "ordering" && <OrderingPanel data={data} reload={load} />}{tab === "banners" && <BannersPanel data={data} reload={load} />}{tab === "orders" && <OrdersPanel data={data} reload={load} goTo={goTo} api={api} />}{tab === "new-order" && <NewOrderPanel data={data} reload={load} goTo={goTo} api={api} />}</main>
     </div>
   );
 }

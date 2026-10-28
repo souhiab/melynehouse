@@ -14,6 +14,7 @@
     "test:admin": "node --test tests/admin-*.test.mjs",
     "test:orders:postgres": "node --env-file=.env --test tests/order-postgres.test.mjs",
     "test:lifecycle:postgres": "node --env-file=.env --test tests/variant-lifecycle-postgres.test.mjs",
+    "test:order-management:postgres": "node --env-file=.env --test tests/order-management-postgres.test.mjs",
     "test": "npm run test:admin && node --test tests/whatsapp-color.test.mjs tests/purchase.test.mjs tests/owner-products-ui.test.mjs && npm run test:sites",
     "validate:catalog": "node scripts/validate-catalog.mjs",
     "local:env": "node scripts/setup-local-env.mjs",

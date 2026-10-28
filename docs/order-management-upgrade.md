@@ -1,0 +1,21 @@
+# Local order management and expandable sidebar — 2026-10-28
+
+## Implemented
+
+- Orders and Products use the same reusable, configuration-backed sidebar section. Each parent has two sibling buttons: the Arabic icon/label navigates to All Orders or All Products; the visually left chevron expands/collapses only. `aria-expanded`, `aria-controls`, keyboard focus, and reduced-motion handling are present. Desktop icon-only mode hides child lists and chevrons while the parent icon remains a navigation button. Mobile retains the existing closable drawer.
+- Owner tabs now use `/owner/...` routes with `pushState` and `popstate`; direct child-route loading, refresh, and browser back/forward derive the selected tab from the URL. The old `/owner` URL still opens Products. Navigation to a child opens its parent section; manual chevron state remains independent until navigation.
+- All Orders remains authenticated and now pages 50 orders at a time. It shows existing private customer data, source, date, total, allowed status transitions, Google Sheet sync state, and real order-item product/variant snapshots with an associated image when present. Missing images use an icon placeholder, not invented photography.
+- New Order uses the existing protected session/CSRF API and `createOrder` transaction. Owners can choose WhatsApp, Instagram, Facebook, website, or other as source, enter customer information, and add multiple published/stock-verified variants. The server validates current price, publication, availability, retirement and stock, combines duplicate lines, locks rows in the existing order, deducts inventory atomically, writes order snapshots and stock movements, and supports idempotent retries. Manual orders are local and explicitly do **not** sync to Google Sheets.
+- Migration `006_order_sources.sql` adds a constrained `orders.source` field. Existing orders receive the default `website` source; previous website idempotency hashes remain compatible. No existing order, inventory, or catalog record was deleted.
+- Customers, Payments and Invoices are shown disabled and marked "قريباً". There is no separate customer management table, payment ledger/collection state, or invoice-number/legal-invoice workflow. Brands and Suppliers reuse the existing real product-metadata views, not fictitious records.
+
+## Validation and limits
+
+- Created a local database backup before migration: `var/backups/melyne-2026-10-28T14-53-51-038Z.dump` (private, ignored by Git).
+- `npm run check`: passed after fixing one pg-mem-incompatible lateral-join query in the owner order list. Catalog validation, admin tests, navigation unit tests, Sites tests, and build passed. The build retains a non-failing large-chunk advisory.
+- `npm run test:order-management:postgres`: passed in a disposable schema on real local PostgreSQL 17.11. Covers owner auth/CSRF, manual source, price, stock deduction, idempotent replay, request mismatch, private order-item snapshots, pagination, cancellation/restock, retired-variant rejection, and main-database count preservation.
+- `npm run test:orders:postgres`: passed all 8 existing order scenarios including rollback and concurrent final-stock orders.
+- `npm run db:migrate` and `npm run db:verify`: passed locally. Verification still reports 34 products, 468 variants, 207 images and 468 checked variant/image associations.
+- Restarted the local API and checked `/api/health`; the owner child URL returned the local app shell.
+
+No GitHub push, deployment, real Google Sheet change, or real-customer test order was made. Browser automation was unavailable (no browser surfaces and the Windows Computer Use native helper was not connected); an isolated QA preview started successfully, but launching headless Chrome for inspection was denied by the local execution policy, so it was stopped. Therefore expanded/collapsed sidebar appearance, Arabic/mobile spacing, click behavior, keyboard focus, and history interactions were **not visually verified**; route/state behavior was verified by tests and code inspection. The order list currently has no search/filter, and legal invoices, payment collection tracking and independent customer records are deferred until corresponding backend models are specified.
