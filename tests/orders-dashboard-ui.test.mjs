@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, customerField, itemSelection, lineTotal, productName, selectionValue, sourceLabel, statusLabel } from "../src/admin/order-view-model.js";
+import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, customerField, itemSelection, lineTotal, orderListState, productName, selectionValue, sourceLabel, statusLabel } from "../src/admin/order-view-model.js";
 
 test("order status presentation has the required fixed sequence and permitted transitions", () => {
   assert.deepEqual(ORDER_STATUSES.map((item) => item.id), ["new", "no_response", "confirmed", "preparing", "shipped", "delivered", "cancelled"]);
@@ -42,4 +42,11 @@ test("multi-item table summaries do not assign the first item's options to all p
   assert.equal(itemSelection({ items: [first] }, "size"), "M");
   assert.equal(itemSelection({ items: [first, { variantSnapshot: { selections: [] } }] }, "size"), "متعدد — انظر التفاصيل");
   assert.equal(itemSelection({ items: [] }, "color"), "غير متوفر");
+});
+
+test("an older Orders API response cannot blank the page", () => {
+  const old = orderListState({ orders: [{ id: "1" }], summary: { total: 3, statusCounts: {} }, pageSize: 50 });
+  assert.equal(old.filteredTotal, 3);
+  assert.equal(old.outdatedApi, true);
+  assert.equal(orderListState({ orders: [], filteredTotal: 0, pageSize: 50 }).outdatedApi, false);
 });

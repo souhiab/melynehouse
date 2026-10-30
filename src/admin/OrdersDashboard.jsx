@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, MagnifyingGlass, Plus, ShoppingBag, X } from "@phosphor-icons/react";
-import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, customerField, itemSelection, lineTotal, productName, selectionValue, sourceLabel, statusLabel } from "./order-view-model.js";
+import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, customerField, itemSelection, lineTotal, orderListState, productName, selectionValue, sourceLabel, statusLabel } from "./order-view-model.js";
 
 const money = (value) => new Intl.NumberFormat("ar-MA", { style: "currency", currency: "MAD" }).format(Number(value || 0));
 const dateTime = new Intl.DateTimeFormat("ar-MA", { timeZone: "Africa/Casablanca", dateStyle: "medium", timeStyle: "short" });
@@ -107,7 +107,7 @@ export function OrdersPanel({ data, reload, goTo, api }) {
     const params = new URLSearchParams({ page: String(page), sort: filters.sort });
     for (const key of ["search", "status", "source", "dateFrom", "dateTo"]) if (filters[key]) params.set(key, filters[key]);
     setLoading(true); setError("");
-    api(`/api/admin/orders?${params}`).then((result) => { if (!active) return; setRows(result.orders); setSummary(result.summary); setFilteredTotal(result.filteredTotal); setPageSize(result.pageSize); })
+    api(`/api/admin/orders?${params}`).then((result) => { if (!active) return; const list = orderListState(result); setRows(list.orders); setSummary(list.summary); setFilteredTotal(list.filteredTotal); setPageSize(list.pageSize); if (list.outdatedApi) setError("واجهة الطلبات متصلة بإصدار قديم من الخادم. أعد تشغيل خادم API المحلي لتفعيل البحث والصفحات."); })
       .catch((failure) => { if (active) setError(failure.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [api, page, filters, refresh]);

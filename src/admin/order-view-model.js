@@ -35,6 +35,17 @@ export const productName = (item) => item?.productSnapshot?.originalName || item
 export const customerField = (order, field) => String(order?.customer?.[field] || "").trim() || "غير متوفر";
 export const itemSelection = (order, kind) => order.items?.length > 1 ? "متعدد — انظر التفاصيل" : selectionValue(order.items?.[0], kind) || "غير متوفر";
 
+export function orderListState(result) {
+  const orders = Array.isArray(result?.orders) ? result.orders : [];
+  return {
+    orders,
+    summary: result?.summary || { total: 0, statusCounts: {} },
+    filteredTotal: Number(result?.filteredTotal ?? result?.summary?.total ?? orders.length),
+    pageSize: Number(result?.pageSize || 50),
+    outdatedApi: result?.filteredTotal === undefined,
+  };
+}
+
 export function selectionValue(item, kind) {
   const pattern = kind === "size" ? /size|taille|مقاس|قياس/i : /colou?r|لون/i;
   const selection = item?.variantSnapshot?.selections?.find((entry) => pattern.test(`${entry.optionKey || ""} ${entry.option || ""}`));
