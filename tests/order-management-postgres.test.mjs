@@ -66,6 +66,8 @@ test("owner manual orders use safe stock reservation and private order details o
   assert.equal(listed.source, "whatsapp");
   assert.equal(listed.created_by_admin, true);
   assert.equal(listed.customer.name, "Local Test");
+  assert.equal(listed.customer.city, "Rabat");
+  assert.equal(listed.customer.phone, "0600000000");
   assert.equal(listed.items[0].productSnapshot.originalName, "Original manual product");
   assert.equal(listed.items[0].productSnapshot.displayName, "Manual product");
   assert.equal(listed.items[0].variantSnapshot.selections[1].value, "M");
@@ -74,6 +76,12 @@ test("owner manual orders use safe stock reservation and private order details o
   assert.equal(listing.filteredTotal, 1);
   assert.equal((await owner.get("/api/admin/orders?search=Original%20manual").expect(200)).body.filteredTotal, 1);
   assert.equal((await owner.get("/api/admin/orders?search=0600000000").expect(200)).body.filteredTotal, 1);
+  assert.equal((await owner.get("/api/admin/orders?search=Local%20Test").expect(200)).body.filteredTotal, 1);
+  assert.equal((await owner.get("/api/admin/orders?search=Rabat").expect(200)).body.filteredTotal, 1);
+  assert.equal((await owner.get(`/api/admin/orders?search=${encodeURIComponent(listed.order_number)}`).expect(200)).body.filteredTotal, 1);
+  assert.equal((await owner.get("/api/admin/orders?search=Test%20address").expect(200)).body.filteredTotal, 0);
+  await request(app).get("/api/admin/orders?search=0600000000").expect(401);
+  assert.equal((await request(app).get("/api/public/storefront").expect(200)).body.orders, undefined);
   assert.equal((await owner.get("/api/admin/orders?status=new&source=whatsapp").expect(200)).body.filteredTotal, 1);
   assert.equal((await owner.get("/api/admin/orders?source=phone").expect(200)).body.filteredTotal, 0);
   assert.equal((await owner.get("/api/admin/orders?dateFrom=2100-01-01").expect(200)).body.filteredTotal, 0);
@@ -85,6 +93,7 @@ test("owner manual orders use safe stock reservation and private order details o
   assert.equal(detail.items[0].unitPriceMad, 125);
   assert.equal(detail.subtotal_mad, 125);
   assert.equal(detail.total_mad, 125);
+  assert.deepEqual(detail.customer, body.customer);
   await owner.post(`/api/admin/orders/${created.body.id}/retry-sheet-sync`).set("x-csrf-token", csrf).send({}).expect(409);
   assert.equal(sheetCalls, 0);
   // Re-running the migration safely marks legacy manual orders from their audit trail.
@@ -144,4 +153,6 @@ test("owner manual orders use safe stock reservation and private order details o
   await db.query(await fs.readFile(path.resolve("server/sql/008_unknown_order_source.sql"), "utf8"));
   assert.equal((await db.query("SELECT source FROM orders WHERE id=$1", [legacyId])).rows[0].source, "unknown");
   assert.equal((await owner.get("/api/admin/orders?source=unknown").expect(200)).body.filteredTotal, 1);
+  const legacy = (await owner.get(`/api/admin/orders/${legacyId}`).expect(200)).body;
+  assert.deepEqual(legacy.customer, {});
 });

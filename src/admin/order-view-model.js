@@ -32,6 +32,8 @@ export const ORDER_TRANSITIONS = {
 export const statusLabel = (id) => ORDER_STATUSES.find((item) => item.id === id)?.label || id || "غير معروف";
 export const sourceLabel = (id) => ORDER_SOURCES.find((item) => item.id === id)?.label || "غير معروف / قديم";
 export const productName = (item) => item?.productSnapshot?.originalName || item?.productSnapshot?.displayName || "منتج محفوظ";
+export const customerField = (order, field) => String(order?.customer?.[field] || "").trim() || "غير متوفر";
+export const itemSelection = (order, kind) => order.items?.length > 1 ? "متعدد — انظر التفاصيل" : selectionValue(order.items?.[0], kind) || "غير متوفر";
 
 export function selectionValue(item, kind) {
   const pattern = kind === "size" ? /size|taille|مقاس|قياس/i : /colou?r|لون/i;

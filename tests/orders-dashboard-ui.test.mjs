@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, lineTotal, productName, selectionValue, sourceLabel, statusLabel } from "../src/admin/order-view-model.js";
+import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, customerField, itemSelection, lineTotal, productName, selectionValue, sourceLabel, statusLabel } from "../src/admin/order-view-model.js";
 
 test("order status presentation has the required fixed sequence and permitted transitions", () => {
   assert.deepEqual(ORDER_STATUSES.map((item) => item.id), ["new", "no_response", "confirmed", "preparing", "shipped", "delivered", "cancelled"]);
@@ -26,4 +26,20 @@ test("historical item snapshots supply exact size, color, name and line total", 
   assert.equal(lineTotal(item), 299.96);
   assert.equal(productName({ productSnapshot: { displayName: "اسم قديم" } }), "اسم قديم");
   assert.equal(selectionValue({ variantSnapshot: { selections: [] } }, "color"), null);
+});
+
+test("saved customer fields remain exact and missing history has an Arabic fallback", () => {
+  const order = { customer: { name: "أمينة العلمي", city: "Casablanca", phone: "+212 6 12 34 56 78" } };
+  assert.equal(customerField(order, "name"), "أمينة العلمي");
+  assert.equal(customerField(order, "city"), "Casablanca");
+  assert.equal(customerField(order, "phone"), "+212 6 12 34 56 78");
+  assert.equal(customerField({ customer: {} }, "phone"), "غير متوفر");
+  assert.equal(customerField(order, "address"), "غير متوفر");
+});
+
+test("multi-item table summaries do not assign the first item's options to all products", () => {
+  const first = { variantSnapshot: { selections: [{ option: "Size", value: "M" }, { option: "Color", value: "أزرق" }] } };
+  assert.equal(itemSelection({ items: [first] }, "size"), "M");
+  assert.equal(itemSelection({ items: [first, { variantSnapshot: { selections: [] } }] }, "size"), "متعدد — انظر التفاصيل");
+  assert.equal(itemSelection({ items: [] }, "color"), "غير متوفر");
 });

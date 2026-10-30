@@ -32,7 +32,11 @@ function filterSql(filters) {
   const add = (value) => { values.push(value); return `$${values.length}`; };
   if (filters.search) {
     const value = add(`%${filters.search}%`);
-    conditions.push(`(o.order_number ILIKE ${value} OR o.customer::text ILIKE ${value} OR EXISTS (
+    conditions.push(`(o.order_number ILIKE ${value}
+      OR COALESCE(o.customer->>'name','') ILIKE ${value}
+      OR COALESCE(o.customer->>'phone','') ILIKE ${value}
+      OR COALESCE(o.customer->>'city','') ILIKE ${value}
+      OR EXISTS (
       SELECT 1 FROM order_items oi WHERE oi.order_id=o.id AND oi.product_snapshot::text ILIKE ${value}))`);
   }
   if (filters.status) conditions.push(`o.status=${add(filters.status)}`);
