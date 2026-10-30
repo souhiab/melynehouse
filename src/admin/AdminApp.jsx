@@ -33,7 +33,8 @@ import { colorOptionFor, colorOfVariant } from "../product-colors.js";
 import { deriveProductStats, filterOwnerProducts } from "./product-stats.js";
 import { readSidebarPreference, saveSidebarPreference } from "./sidebar-preference.js";
 import { buildVariants, optionValuesFromText, selectionSignature } from "./variant-lifecycle.js";
-import { NewOrderPanel, OrdersPanel } from "./OrderManagement.jsx";
+import { NewOrderPanel } from "./OrderManagement.jsx";
+import { OrdersPanel } from "./OrdersDashboard.jsx";
 import { ownerNavigation, ownerPathForTab, ownerSectionForTab, ownerTabFromPath } from "./owner-navigation.js";
 import "./admin.css";
 

@@ -13,6 +13,7 @@ import { bannerSchema, imageColorSchema, loginSchema, manualOrderSchema, orderSc
 import { cookieOptions, randomToken, tokenHash, verifyPassword } from "./security.mjs";
 import { syncOrderToSheet } from "./sheet-sync.mjs";
 import { changeOrderStatus, createOrder } from "./order-service.mjs";
+import { getAdminOrder, listAdminOrders } from "./order-list.mjs";
 
 const SESSION_COOKIE = "melyne_owner_session";
 const CSRF_COOKIE = "melyne_owner_csrf";
@@ -141,20 +142,8 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
   app.put("/api/admin/banner-order",asyncRoute(async(req,res)=>{ const ids=req.body.orderedBannerIds; if(!Array.isArray(ids)||new Set(ids).size!==ids.length) throw Object.assign(new Error("Banner ordering must contain unique IDs"),{status:400}); await transaction(db,async(client)=>{ const existing=(await client.query("SELECT id FROM banners ORDER BY id")).rows.map(row=>row.id); if(existing.length!==ids.length||existing.some(id=>!ids.includes(id))) throw Object.assign(new Error("Banner ordering must include every banner exactly once"),{status:400}); await client.query("UPDATE banners SET sort_position=sort_position+100000"); for(let i=0;i<ids.length;i+=1) await client.query("UPDATE banners SET sort_position=$1,updated_at=now() WHERE id=$2",[i+1,ids[i]]); }); await audit(db,req.admin.user_id,"reorder","banners",null,{orderedBannerIds:ids,requestId:req.requestId}); res.status(204).end(); }));
   app.post("/api/admin/uploads",upload.single("image"),asyncRoute(async(req,res)=>{ if(!req.file) throw Object.assign(new Error("Image is required"),{status:400}); await finalizeImageUpload(req.file); const checksum=await sha256File(req.file.path); const asset=await recordUpload(db,config,req,req.file,checksum); req.keepUploadedFile=true; await audit(db,req.admin.user_id,"upload","asset",asset.id,{purpose:req.body.purpose||null,requestId:req.requestId}); res.status(201).json({id:asset.id,publicUrl:asset.publicUrl,checksum}); }));
 
-  app.get("/api/admin/orders",asyncRoute(async(req,res)=>{ const page=Number(req.query.page||1); if(!Number.isSafeInteger(page)||page<1||page>100000) throw Object.assign(new Error("Invalid order page"),{status:400}); const pageSize=50; const [result,counts]=await Promise.all([
-    db.query("SELECT id,order_number,status,source,created_by_admin,currency,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,sheet_sync_error,sheet_synced_at,created_at FROM orders ORDER BY created_at DESC,id DESC LIMIT $1 OFFSET $2",[pageSize,(page-1)*pageSize]),
-    db.query("SELECT COUNT(*) AS total, SUM(CASE WHEN status <> 'cancelled' THEN 1 ELSE 0 END) AS accepted, SUM(CASE WHEN status NOT IN ('delivered','cancelled') THEN 1 ELSE 0 END) AS open, COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN total_mad ELSE 0 END),0) AS accepted_total_mad FROM orders"),
-  ]); const summary=counts.rows[0]; const ids=result.rows.map(row=>row.id);
-    const items=ids.length ? (await db.query(`SELECT oi.order_id,oi.product_id,oi.quantity,oi.unit_price_mad,oi.product_snapshot,oi.variant_snapshot,pi.public_url AS thumbnail_url
-      FROM order_items oi LEFT JOIN product_variants pv ON pv.id=oi.variant_id LEFT JOIN product_images pi ON pi.id=pv.image_id
-      WHERE oi.order_id=ANY($1::uuid[]) ORDER BY oi.created_at,oi.id`,[ids])).rows : [];
-    const productIds=[...new Set(items.map(item=>item.product_id).filter(Boolean))];
-    const fallbackImages=productIds.length ? (await db.query("SELECT product_id,public_url FROM product_images WHERE product_id=ANY($1::text[]) AND archived_at IS NULL ORDER BY sort_position,id",[productIds])).rows : [];
-    const firstImageByProduct=new Map();
-    for(const image of fallbackImages) if(!firstImageByProduct.has(image.product_id)) firstImageByProduct.set(image.product_id,image.public_url);
-    const itemsByOrder=new Map(ids.map(id=>[id,[]]));
-    for(const item of items) itemsByOrder.get(item.order_id)?.push({quantity:item.quantity,unitPriceMad:Number(item.unit_price_mad),productSnapshot:item.product_snapshot,variantSnapshot:item.variant_snapshot,thumbnailUrl:item.thumbnail_url||firstImageByProduct.get(item.product_id)||null});
-    res.json({orders:result.rows.map(row=>({...row,subtotal_mad:Number(row.subtotal_mad),total_mad:Number(row.total_mad),items:itemsByOrder.get(row.id)||[]})),page,pageSize,summary:{total:Number(summary.total),accepted:Number(summary.accepted),open:Number(summary.open),acceptedTotalMad:Number(summary.accepted_total_mad)}}); }));
+  app.get("/api/admin/orders",asyncRoute(async(req,res)=>res.json(await listAdminOrders(db,req.query))));
+  app.get("/api/admin/orders/:id",asyncRoute(async(req,res)=>res.json(await getAdminOrder(db,req.params.id))));
   app.post("/api/admin/orders",asyncRoute(async(req,res)=>{
     const key=req.get("idempotency-key");
     if(!key || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) throw Object.assign(new Error("A UUID Idempotency-Key header is required"),{status:400});
