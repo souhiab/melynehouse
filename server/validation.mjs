@@ -83,7 +83,7 @@ export const orderSchema = z.object({
 }).strict();
 
 export const manualOrderSchema = orderSchema.safeExtend({
-  source: z.enum(["whatsapp", "instagram", "facebook", "website", "other"]),
+  source: z.enum(["whatsapp", "instagram", "facebook", "tiktok", "phone", "website", "other"]),
 });
 
 export const bannerSchema = z.object({

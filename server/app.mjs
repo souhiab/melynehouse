@@ -142,26 +142,30 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
   app.post("/api/admin/uploads",upload.single("image"),asyncRoute(async(req,res)=>{ if(!req.file) throw Object.assign(new Error("Image is required"),{status:400}); await finalizeImageUpload(req.file); const checksum=await sha256File(req.file.path); const asset=await recordUpload(db,config,req,req.file,checksum); req.keepUploadedFile=true; await audit(db,req.admin.user_id,"upload","asset",asset.id,{purpose:req.body.purpose||null,requestId:req.requestId}); res.status(201).json({id:asset.id,publicUrl:asset.publicUrl,checksum}); }));
 
   app.get("/api/admin/orders",asyncRoute(async(req,res)=>{ const page=Number(req.query.page||1); if(!Number.isSafeInteger(page)||page<1||page>100000) throw Object.assign(new Error("Invalid order page"),{status:400}); const pageSize=50; const [result,counts]=await Promise.all([
-    db.query("SELECT id,order_number,status,source,currency,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,sheet_sync_error,sheet_synced_at,created_at FROM orders ORDER BY created_at DESC,id DESC LIMIT $1 OFFSET $2",[pageSize,(page-1)*pageSize]),
+    db.query("SELECT id,order_number,status,source,created_by_admin,currency,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,sheet_sync_error,sheet_synced_at,created_at FROM orders ORDER BY created_at DESC,id DESC LIMIT $1 OFFSET $2",[pageSize,(page-1)*pageSize]),
     db.query("SELECT COUNT(*) AS total, SUM(CASE WHEN status <> 'cancelled' THEN 1 ELSE 0 END) AS accepted, SUM(CASE WHEN status NOT IN ('delivered','cancelled') THEN 1 ELSE 0 END) AS open, COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN total_mad ELSE 0 END),0) AS accepted_total_mad FROM orders"),
   ]); const summary=counts.rows[0]; const ids=result.rows.map(row=>row.id);
-    const items=ids.length ? (await db.query(`SELECT oi.order_id,oi.quantity,oi.unit_price_mad,oi.product_snapshot,oi.variant_snapshot,pi.public_url AS thumbnail_url
+    const items=ids.length ? (await db.query(`SELECT oi.order_id,oi.product_id,oi.quantity,oi.unit_price_mad,oi.product_snapshot,oi.variant_snapshot,pi.public_url AS thumbnail_url
       FROM order_items oi LEFT JOIN product_variants pv ON pv.id=oi.variant_id LEFT JOIN product_images pi ON pi.id=pv.image_id
       WHERE oi.order_id=ANY($1::uuid[]) ORDER BY oi.created_at,oi.id`,[ids])).rows : [];
+    const productIds=[...new Set(items.map(item=>item.product_id).filter(Boolean))];
+    const fallbackImages=productIds.length ? (await db.query("SELECT product_id,public_url FROM product_images WHERE product_id=ANY($1::text[]) AND archived_at IS NULL ORDER BY sort_position,id",[productIds])).rows : [];
+    const firstImageByProduct=new Map();
+    for(const image of fallbackImages) if(!firstImageByProduct.has(image.product_id)) firstImageByProduct.set(image.product_id,image.public_url);
     const itemsByOrder=new Map(ids.map(id=>[id,[]]));
-    for(const item of items) itemsByOrder.get(item.order_id)?.push({quantity:item.quantity,unitPriceMad:Number(item.unit_price_mad),productSnapshot:item.product_snapshot,variantSnapshot:item.variant_snapshot,thumbnailUrl:item.thumbnail_url});
+    for(const item of items) itemsByOrder.get(item.order_id)?.push({quantity:item.quantity,unitPriceMad:Number(item.unit_price_mad),productSnapshot:item.product_snapshot,variantSnapshot:item.variant_snapshot,thumbnailUrl:item.thumbnail_url||firstImageByProduct.get(item.product_id)||null});
     res.json({orders:result.rows.map(row=>({...row,subtotal_mad:Number(row.subtotal_mad),total_mad:Number(row.total_mad),items:itemsByOrder.get(row.id)||[]})),page,pageSize,summary:{total:Number(summary.total),accepted:Number(summary.accepted),open:Number(summary.open),acceptedTotalMad:Number(summary.accepted_total_mad)}}); }));
   app.post("/api/admin/orders",asyncRoute(async(req,res)=>{
     const key=req.get("idempotency-key");
     if(!key || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) throw Object.assign(new Error("A UUID Idempotency-Key header is required"),{status:400});
     const {source,...input}=parse(manualOrderSchema,req.body);
     // Owner-created orders remain local; this route never contacts a Google Sheet.
-    const order=await createOrder(db,{...config,googleSheetsWebhookUrl:null},input,key,source);
+    const order=await createOrder(db,config,input,key,source,{manual:true});
     if(!order.replayed) await audit(db,req.admin.user_id,"create_manual_order","order",order.id,{source,requestId:req.requestId});
     res.status(order.replayed?200:201).json(order);
   }));
   app.patch("/api/admin/orders/:id",asyncRoute(async(req,res)=>res.json(await changeOrderStatus(db,req.params.id,String(req.body.status||""),req.admin.user_id,req.requestId))));
-  app.post("/api/admin/orders/:id/retry-sheet-sync",asyncRoute(async(req,res)=>{ const exists=await db.query("SELECT id FROM orders WHERE id=$1",[req.params.id]); if(!exists.rowCount) throw Object.assign(new Error("Order not found"),{status:404}); await db.query("UPDATE orders SET sheet_sync_status=$1,sheet_sync_error=NULL,updated_at=now() WHERE id=$2",[config.googleSheetsWebhookUrl?"pending":"disabled",req.params.id]); const sync=await syncOrderToSheet(db,config,req.params.id,fetchImpl); await audit(db,req.admin.user_id,"retry_sheet_sync","order",req.params.id,{sheetSyncStatus:sync.status,requestId:req.requestId}); res.json({id:req.params.id,sheetSyncStatus:sync.status,error:sync.error}); }));
+  app.post("/api/admin/orders/:id/retry-sheet-sync",asyncRoute(async(req,res)=>{ const exists=await db.query("SELECT id,created_by_admin FROM orders WHERE id=$1",[req.params.id]); if(!exists.rowCount) throw Object.assign(new Error("Order not found"),{status:404}); if(exists.rows[0].created_by_admin) throw Object.assign(new Error("Manual orders cannot be synchronized to Google Sheets"),{status:409}); await db.query("UPDATE orders SET sheet_sync_status=$1,sheet_sync_error=NULL,updated_at=now() WHERE id=$2",[config.googleSheetsWebhookUrl?"pending":"disabled",req.params.id]); const sync=await syncOrderToSheet(db,config,req.params.id,fetchImpl); await audit(db,req.admin.user_id,"retry_sheet_sync","order",req.params.id,{sheetSyncStatus:sync.status,requestId:req.requestId}); res.json({id:req.params.id,sheetSyncStatus:sync.status,error:sync.error}); }));
 
   app.use((error,req,res,next)=>{ if(req.file?.path&&!req.keepUploadedFile) fsp.unlink(req.file.path).catch(()=>{}); const status=error.status||((error.code==="23505"||error.code==="23503")?409:500); if(status>=500) console.error(error); res.status(status).json({error:status>=500?"Server error":error.message,details:error.details,requestId:req.requestId}); });
   return app;

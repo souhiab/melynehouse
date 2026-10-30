@@ -17,7 +17,13 @@ test("owner child routes, parent destinations and planned navigation are explici
   assert.equal(ownerTabFromPath("/owner"), "products");
   const sections = ownerNavigation.flatMap((group) => group.sections || []);
   assert.deepEqual(sections.map((section) => section.id), ["orders", "products"]);
+  assert.equal(sections[0].path, "/owner/orders");
+  assert.equal(sections[0].children[0].path, sections[0].path);
+  assert.equal(sections[1].path, "/owner/products");
+  assert.equal(sections[1].children[0].path, sections[1].path);
+  assert.equal(sections[1].children[1].path, "/owner/products/new");
   assert.deepEqual(sections[0].children.filter((item) => item.planned).map((item) => item.id), ["customers", "payments", "invoices"]);
+  assert.ok(sections[0].children.filter((item) => item.planned).every((item) => !item.path));
 });
 
 test("removed combinations retire and re-added combinations reuse their original IDs", () => {

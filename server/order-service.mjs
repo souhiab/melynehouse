@@ -3,7 +3,8 @@ import { transaction } from "./db.mjs";
 
 const conflict = (message) => Object.assign(new Error(message), { status: 409 });
 const transitions = {
-  new: ["confirmed", "cancelled"],
+  new: ["confirmed", "no_response", "cancelled"],
+  no_response: ["confirmed", "cancelled"],
   confirmed: ["preparing", "cancelled"],
   preparing: ["shipped", "cancelled"],
   shipped: ["delivered"],
@@ -31,7 +32,7 @@ export function orderRequestHash(input, lines, source = "website") {
   return crypto.createHash("sha256").update(JSON.stringify(request)).digest("hex");
 }
 
-export async function createOrder(db, config, input, idempotencyKey, source = "website") {
+export async function createOrder(db, config, input, idempotencyKey, source = "website", { manual = false } = {}) {
   const lines = combineOrderLines(input.items);
   const requestHash = orderRequestHash(input, lines, source);
   return transaction(db, async (client) => {
@@ -41,8 +42,9 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
       RETURNING request_hash,order_id`, [idempotencyKey, requestHash])).rows[0];
     if (claim.request_hash !== requestHash) throw conflict("Idempotency key was already used for a different order");
     if (claim.order_id) {
-      const existing = (await client.query("SELECT id,order_number,total_mad,sheet_sync_status FROM orders WHERE id=$1", [claim.order_id])).rows[0];
+      const existing = (await client.query("SELECT id,order_number,total_mad,sheet_sync_status,created_by_admin FROM orders WHERE id=$1", [claim.order_id])).rows[0];
       if (!existing) throw new Error("Committed order is missing");
+      if (existing.created_by_admin !== manual) throw conflict("Idempotency key was already used by another order channel");
       return { id: existing.id, orderNumber: existing.order_number, totalMad: Number(existing.total_mad), sheetSyncStatus: existing.sheet_sync_status, replayed: true };
     }
 
@@ -50,7 +52,7 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
     // parent-before-variant order; no external calls occur while these locks are held.
     const products = new Map();
     for (const productId of [...new Set(lines.map((line) => line.productId))].sort()) {
-      const product = (await client.query("SELECT id,display_name,status,availability FROM products WHERE id=$1 FOR UPDATE", [productId])).rows[0];
+      const product = (await client.query("SELECT id,original_name,display_name,status,availability FROM products WHERE id=$1 FOR UPDATE", [productId])).rows[0];
       if (!product || product.status !== "published" || product.availability !== "available") throw conflict("A selected product is no longer available");
       products.set(productId, product);
     }
@@ -75,15 +77,15 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
 
     const id = crypto.randomUUID();
     const orderNumber = `MLY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-    const syncStatus = config.googleSheetsWebhookUrl ? "pending" : "disabled";
+    const syncStatus = !manual && config.googleSheetsWebhookUrl ? "pending" : "disabled";
     const total = (subtotalCents / 100).toFixed(2);
-    await client.query(`INSERT INTO orders(id,order_number,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,idempotency_key,request_hash,inventory_state,source)
-      VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,'reserved',$9)`,
-    [id, orderNumber, total, JSON.stringify(input.customer), input.note || null, syncStatus, idempotencyKey, requestHash, source]);
+    await client.query(`INSERT INTO orders(id,order_number,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,idempotency_key,request_hash,inventory_state,source,created_by_admin)
+      VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,'reserved',$9,$10)`,
+    [id, orderNumber, total, JSON.stringify(input.customer), input.note || null, syncStatus, idempotencyKey, requestHash, source, manual]);
     for (const { line, variant, product, unitCents } of checked) {
       await client.query(`INSERT INTO order_items(id,order_id,product_id,variant_id,quantity,unit_price_mad,product_snapshot,variant_snapshot)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [crypto.randomUUID(), id, product.id, variant.id, line.quantity, (unitCents / 100).toFixed(2), JSON.stringify({ id: product.id, displayName: product.display_name }), JSON.stringify({ id: variant.id, name: variant.name, selections: variant.selections })]);
+      [crypto.randomUUID(), id, product.id, variant.id, line.quantity, (unitCents / 100).toFixed(2), JSON.stringify({ id: product.id, originalName: product.original_name, displayName: product.display_name }), JSON.stringify({ id: variant.id, name: variant.name, selections: variant.selections })]);
       await client.query("INSERT INTO stock_movements(id,order_id,variant_id,quantity_delta,reason) VALUES($1,$2,$3,$4,'order_reserved')",
         [crypto.randomUUID(), id, variant.id, -line.quantity]);
     }

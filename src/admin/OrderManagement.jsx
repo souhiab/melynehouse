@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, ShoppingBag } from "@phosphor-icons/react";
 
 const money = (value) => new Intl.NumberFormat("ar-MA", { style: "currency", currency: "MAD" }).format(Number(value || 0));
-const sources = { website: "الموقع", whatsapp: "واتساب", instagram: "إنستغرام", facebook: "فيسبوك", other: "مصدر آخر" };
-const statusLabels = { new: "جديد", confirmed: "مؤكد", preparing: "قيد التجهيز", shipped: "شُحن", delivered: "سُلّم", cancelled: "ملغى" };
-const transitions = { new: ["confirmed", "cancelled"], confirmed: ["preparing", "cancelled"], preparing: ["shipped", "cancelled"], shipped: ["delivered"], delivered: [], cancelled: [] };
+const sources = { website: "الموقع", whatsapp: "واتساب", instagram: "إنستغرام", facebook: "فيسبوك", tiktok: "تيك توك", phone: "الهاتف", other: "مصدر آخر" };
+const statusLabels = { new: "قيد الانتظار", confirmed: "مؤكد", no_response: "لا يرد", preparing: "قيد التجهيز", shipped: "شُحن", delivered: "سُلّم", cancelled: "ملغى" };
+const transitions = { new: ["confirmed", "no_response", "cancelled"], no_response: ["confirmed", "cancelled"], confirmed: ["preparing", "cancelled"], preparing: ["shipped", "cancelled"], shipped: ["delivered"], delivered: [], cancelled: [] };
+
+function OrderThumbnail({ src }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return src && !failed ? <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
+    : <span className="owner-order-image-empty" aria-hidden="true"><ShoppingBag size={22} /></span>;
+}
 
 export function OrdersPanel({ data, reload, goTo, api }) {
   const [statusError, setStatusError] = useState("");
@@ -27,12 +34,12 @@ export function OrdersPanel({ data, reload, goTo, api }) {
     {statusError && <div className="owner-error" role="alert">{statusError}</div>}
     <div className="orders-table" role="region" aria-label="جميع الطلبات" tabIndex="0"><table><thead><tr><th>الطلب والمنتجات</th><th>العميل</th><th>المصدر</th><th>المجموع</th><th>الحالة</th><th>Google Sheet</th><th>التاريخ</th></tr></thead><tbody>{rows.map((order) => <tr key={order.id}>
       <td><strong dir="ltr">{order.order_number}</strong><div className="owner-order-items">{(order.items || []).map((item, index) => <div className="owner-order-item" key={`${order.id}-${index}`}>
-        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" /> : <span className="owner-order-image-empty" aria-hidden="true"><ShoppingBag size={22} /></span>}
-        <span><strong>{item.productSnapshot?.displayName || "منتج محفوظ"}</strong><small>{item.variantSnapshot?.selections?.map((selection) => `${selection.option}: ${selection.value}`).join(" · ") || item.variantSnapshot?.name || ""}</small><small>{item.quantity} × {money(item.unitPriceMad)}</small></span>
+        <OrderThumbnail src={item.thumbnailUrl} />
+        <span><strong>{item.productSnapshot?.originalName || item.productSnapshot?.displayName || "منتج محفوظ"}</strong><small>{item.variantSnapshot?.selections?.map((selection) => `${selection.option}: ${selection.value}`).join(" · ") || item.variantSnapshot?.name || ""}</small><small>{item.quantity} × {money(item.unitPriceMad)}</small></span>
       </div>)}</div></td>
       <td>{order.customer?.name}<small>{order.customer?.phone}<br />{order.customer?.city}</small></td><td>{sources[order.source] || order.source || "—"}</td><td>{money(order.total_mad)}</td>
       <td><select aria-label={`حالة الطلب ${order.order_number}`} value={order.status} onChange={async (event) => { try { setStatusError(""); await api(`/api/admin/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: event.target.value }) }); await Promise.all([reload(), refreshPage()]); } catch (error) { setStatusError(error.message); await refreshPage(); } }}>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status} disabled={status !== order.status && !transitions[order.status]?.includes(status)}>{label}</option>)}</select></td>
-      <td><span className={`sync ${order.sheet_sync_status}`}>{order.sheet_sync_status}</span>{order.sheet_sync_status === "failed" && <button type="button" className="quiet" onClick={async () => { try { setStatusError(""); await api(`/api/admin/orders/${order.id}/retry-sheet-sync`, { method: "POST", body: "{}" }); await Promise.all([reload(), refreshPage()]); } catch (error) { setStatusError(error.message); } }}>إعادة المحاولة</button>}</td><td>{new Date(order.created_at).toLocaleString("ar-MA")}</td>
+      <td><span className={`sync ${order.sheet_sync_status}`}>{order.sheet_sync_status}</span>{order.sheet_sync_status === "failed" && !order.created_by_admin && <button type="button" className="quiet" onClick={async () => { try { setStatusError(""); await api(`/api/admin/orders/${order.id}/retry-sheet-sync`, { method: "POST", body: "{}" }); await Promise.all([reload(), refreshPage()]); } catch (error) { setStatusError(error.message); } }}>إعادة المحاولة</button>}</td><td>{new Date(order.created_at).toLocaleString("ar-MA")}</td>
     </tr>)}</tbody></table>{!rows.length && !loading && <p className="empty-admin">لا توجد طلبات في هذه الصفحة.</p>}</div>
     {loading && <p role="status">جارٍ تحميل الطلبات…</p>}
     {Number(data.orderSummary?.total || 0) > pageSize && <nav className="owner-pagination" aria-label="صفحات الطلبات"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>السابق</button><span>الصفحة {page} من {Math.ceil(data.orderSummary.total / pageSize)}</span><button type="button" disabled={page >= Math.ceil(data.orderSummary.total / pageSize) || loading} onClick={() => setPage(page + 1)}>التالي</button></nav>}
