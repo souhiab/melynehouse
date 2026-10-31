@@ -112,6 +112,8 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .category-tile .reference-crop { width: 100%; height: 100%; }
 .category-tile .reference-crop img { transition: transform .45s ease; }
 .category-tile:hover .reference-crop img { transform: scale(1.012); }
+.category-tile-label { display: none; }
+.category-grid:focus-visible, .category-tile:focus-visible { outline: 3px solid #355440; outline-offset: 3px; }
 
 .section-heading { margin-bottom: 22px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; text-align: center; }
 .section-heading > div span { color: var(--warm); font-size: 12px; font-weight: 700; }
@@ -350,12 +352,12 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .search-trigger { justify-self: end; }
   .hero { min-height: 0; grid-template-columns: 1fr; }
   .hero-reference { order: -1; width: 100%; height: auto; aspect-ratio: 904 / 392; }
-  .hero-copy { min-height: 340px; padding: 38px 24px 26px; align-items: center; text-align: center; }
-  .hero-copy h1 { font-size: 52px; }
-  .hero-copy p { font-size: 15px; }
-  .hero-trust { gap: 18px; }
-  .category-grid { grid-template-columns: 1fr; gap: 12px; }
-  .category-tile { height: clamp(185px, 48vw, 300px); aspect-ratio: auto; }
+  .hero-copy { min-height: 280px; padding: 24px 24px 20px; align-items: center; text-align: center; }
+  .hero-copy h1 { font-size: 48px; line-height: 1.12; }
+  .hero-copy p { margin-bottom: 16px; font-size: 15px; }
+  .hero-trust { margin-top: 16px; gap: 16px; }
+  .category-grid { margin-top: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .category-tile { height: auto; aspect-ratio: 1.92 / 1; }
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 10px; }
   .product-name { font-size: 12px; }
   .price-row.compact strong { font-size: 14px; }
@@ -393,12 +395,13 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .shell { width: min(100% - 20px, 500px); }
   .announcement span:first-child { display: none; }
   .announcement-separator { display: none; }
-  .hero-copy { min-height: 315px; padding-inline: 17px; }
-  .hero-copy h1 { font-size: 46px; }
+  .hero-copy { min-height: 0; padding: 24px 17px 20px; }
+  .hero-copy h1 { margin-bottom: 8px; font-size: clamp(36px, 10.5vw, 44px); line-height: 1.12; }
+  .hero-copy p { margin-bottom: 16px; font-size: 14px; line-height: 1.5; }
   .hero-button { width: 100%; min-width: 0; }
-  .hero-trust { width: 100%; justify-content: center; }
-  .hero-trust span { font-size: 10px; }
-  .category-tile { height: auto; aspect-ratio: 1.92 / 1; }
+  .hero-trust { width: 100%; justify-content: center; margin-top: 16px; gap: 12px; }
+  .hero-trust span { gap: 6px; font-size: 10px; }
+  .hero-trust svg { width: 24px; height: 24px; }
   .section-heading h2 { font-size: 25px; }
   .product-image-wrap { aspect-ratio: 4 / 5.4; }
   .featured-section .product-image-wrap { aspect-ratio: 4 / 5; }
@@ -421,6 +424,15 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .footer-main { grid-template-columns: 1fr; }
   .footer-bottom { padding-block: 16px; flex-direction: column; justify-content: center; gap: 4px; text-align: center; }
   .policy-page h1 { font-size: 31px; }
+}
+
+@media (max-width: 599px) {
+  .category-grid { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(136px, 41vw, 174px); grid-template-columns: none; gap: 12px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-inline: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 0; scrollbar-width: thin; scrollbar-color: #b8c8bb transparent; padding-bottom: 4px; }
+  .category-tile { display: flex; flex-direction: column; aspect-ratio: auto; height: 164px; scroll-snap-align: start; background: #f5eae0; text-decoration: none; }
+  .category-tile .category-reference { flex: 1; min-height: 0; height: auto; }
+  .category-tile .category-reference img { object-position: right center; }
+  .category-tile:hover .category-reference img { transform: none; }
+  .category-tile-label { display: flex; align-items: center; justify-content: center; flex: none; min-height: 36px; padding: 4px 6px; color: #1f2e24; font-size: 13px; font-weight: 700; line-height: 1.25; text-align: center; white-space: nowrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

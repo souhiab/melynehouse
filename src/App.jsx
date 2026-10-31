@@ -133,7 +133,7 @@ function Hero({ navigate, banner }) {
 function CategoryTiles({ navigate, categories }) {
   const cropSources = { kids: "/images/reference/category-kids-web.jpg", women: "/images/reference/category-women-web.jpg", "ملابس-رجالية": "/images/reference/category-men-web.jpg" };
   const labels = { kids: "ملابس الأطفال", women: "ملابس النساء", "ملابس-رجالية": "ملابس الرجال" };
-  return <section className="category-grid shell" aria-label="تسوق حسب الفئة">{categories.map((category) => <Link key={category.slug} to={`/shop/${encodeURIComponent(category.slug)}`} navigate={navigate} className="category-tile" ariaLabel={`تسوق ${labels[category.slug]}`}><ReferenceCrop className="category-reference" src={cropSources[category.slug]} alt={labels[category.slug]} /></Link>)}</section>;
+  return <section className="category-grid shell" aria-label="تسوق حسب الفئة" tabIndex="0">{categories.map((category) => <Link key={category.slug} to={`/shop/${encodeURIComponent(category.slug)}`} navigate={navigate} className="category-tile" ariaLabel={`تسوق ${labels[category.slug]}`}><ReferenceCrop className="category-reference" src={cropSources[category.slug]} alt="" /><span className="category-tile-label" aria-hidden="true">{labels[category.slug]}</span></Link>)}</section>;
 }
 
 function Price({ product, variant, compact = false }) {
