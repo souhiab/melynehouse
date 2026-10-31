@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, MagnifyingGlass, Plus, ShoppingBag, X } from "@phosphor-icons/react";
+import { ArrowDown, ArrowUp, Copy, MagnifyingGlass, Plus, ShoppingBag, WhatsappLogo, X } from "@phosphor-icons/react";
+import storeData from "../../data/store.json";
+import { customerWhatsAppHref } from "./order-contact.js";
 import { ORDER_SOURCES, ORDER_STATUSES, ORDER_TRANSITIONS, customerField, itemSelection, lineTotal, orderListState, productName, selectionValue, sourceLabel, statusLabel } from "./order-view-model.js";
 
 const money = (value) => new Intl.NumberFormat("ar-MA", { style: "currency", currency: "MAD" }).format(Number(value || 0));
@@ -10,14 +12,24 @@ const formatDate = (value, formatter = dateTime) => value ? formatter.format(new
 
 function CopyPhoneButton({ phone }) {
   const [feedback, setFeedback] = useState("");
-  if (!phone || !String(phone).trim()) return null;
+  const available = Boolean(String(phone || "").trim());
   const copy = async (event) => {
     event.stopPropagation();
     try { await navigator.clipboard.writeText(String(phone)); setFeedback("تم النسخ"); }
     catch { setFeedback("تعذر النسخ"); }
     window.setTimeout(() => setFeedback(""), 2000);
   };
-  return <button type="button" className="owner-order-copy-phone" onClick={copy} aria-label="نسخ رقم الهاتف" title="نسخ رقم الهاتف">{feedback || "نسخ"}</button>;
+  return <><button type="button" className="owner-order-copy-phone" onClick={copy} disabled={!available} aria-label="نسخ رقم الهاتف" title="نسخ رقم الهاتف"><Copy size={16} aria-hidden="true" /></button>{feedback && <span className="owner-order-copy-feedback" role="status">{feedback}</span>}</>;
+}
+
+function PhoneContact({ order, publicProducts = [] }) {
+  const phone = order?.customer?.phone;
+  const href = customerWhatsAppHref(order, publicProducts, storeData.domain);
+  const openWhatsApp = (event) => {
+    event.stopPropagation();
+    if (href) window.open(href, "_blank", "noopener,noreferrer");
+  };
+  return <span className="owner-order-phone"><b dir="ltr" title={customerField(order, "phone")}>{customerField(order, "phone")}</b><span className="owner-order-contact-actions"><CopyPhoneButton phone={phone} /><button type="button" className="owner-order-whatsapp-phone" onClick={openWhatsApp} disabled={!href} aria-label="تأكيد الطلب مع العميل عبر واتساب" title={href ? "تأكيد الطلب مع العميل عبر واتساب" : "رقم الهاتف غير صالح لواتساب"}><WhatsappLogo size={17} weight="fill" aria-hidden="true" /></button></span></span>;
 }
 
 function OrderThumbnail({ src }) {
@@ -44,7 +56,7 @@ function OrderProductSummary({ order }) {
   return <div className="owner-order-product"><OrderThumbnail src={first?.thumbnailUrl} /><span className="owner-order-product-copy"><strong title={productName(first)}>{productName(first)}</strong><small dir="ltr">{order.order_number}</small><small>{first?.quantity > 1 ? `الكمية ${first.quantity} · ` : ""}{sourceLabel(order.source)}{order.items?.length > 1 ? ` · +${order.items.length - 1} منتج` : ""}</small></span></div>;
 }
 
-export function OrderDetail({ order, loading, error, onClose, onStatusChange, onRetrySheet, busy }) {
+export function OrderDetail({ order, loading, error, onClose, onStatusChange, onRetrySheet, busy, publicProducts = [] }) {
   const closeRef = useRef(null);
   const panelRef = useRef(null);
   useEffect(() => {
@@ -71,7 +83,7 @@ export function OrderDetail({ order, loading, error, onClose, onStatusChange, on
       {order && <div className="owner-order-drawer-body">
         <div className="owner-order-detail-top"><div><small>تاريخ الطلب</small><strong>{formatDate(order.created_at)}</strong></div><div><small>المصدر</small><strong>{sourceLabel(order.source)}</strong></div></div>
         <section className="owner-order-detail-section"><h3>الحالة</h3><div className="owner-order-detail-status"><StatusBadge status={order.status} /><StatusSelect order={order} busy={busy} onChange={onStatusChange} /></div></section>
-        <section className="owner-order-detail-section"><h3>العميل</h3><dl className="owner-order-detail-grid"><div><dt>الاسم الكامل</dt><dd>{customerField(order, "name")}</dd></div><div><dt>رقم الهاتف</dt><dd className="owner-order-phone"><b dir="ltr">{customerField(order, "phone")}</b><CopyPhoneButton phone={order.customer?.phone} /></dd></div><div><dt>المدينة</dt><dd>{customerField(order, "city")}</dd></div><div><dt>العنوان</dt><dd>{customerField(order, "address")}</dd></div></dl></section>
+        <section className="owner-order-detail-section"><h3>العميل</h3><dl className="owner-order-detail-grid"><div><dt>الاسم الكامل</dt><dd>{customerField(order, "name")}</dd></div><div><dt>رقم الهاتف</dt><dd><PhoneContact order={order} publicProducts={publicProducts} /></dd></div><div><dt>المدينة</dt><dd>{customerField(order, "city")}</dd></div><div><dt>العنوان</dt><dd>{customerField(order, "address")}</dd></div></dl></section>
         <section className="owner-order-detail-section"><h3>المنتجات ({order.items?.length || 0})</h3><div className="owner-order-detail-items">{(order.items || []).map((item, index) => <article key={index} className="owner-order-detail-item"><OrderThumbnail src={item.thumbnailUrl} /><div><strong>{productName(item)}</strong><small>المقاس: {selectionValue(item, "size") || "—"} · اللون: {selectionValue(item, "color") || "—"}</small><small>الكمية: {item.quantity} × {money(item.unitPriceMad)}</small></div><b>{money(lineTotal(item))}</b></article>)}</div>
           <div className="owner-order-totals"><div><span>المجموع الفرعي المحفوظ</span><strong>{money(order.subtotal_mad)}</strong></div><div className="final"><span>الإجمالي المحفوظ</span><strong>{money(order.total_mad)}</strong></div></div></section>
         {order.customer_note && <section className="owner-order-detail-section"><h3>ملاحظات الطلب</h3><p className="owner-order-note">{order.customer_note}</p></section>}
@@ -153,17 +165,20 @@ export function OrdersPanel({ data, reload, goTo, api }) {
       <button type="button" className="owner-order-clear" onClick={clearFilters}>مسح الفلاتر</button></div>
     <div className="owner-order-list-head"><strong>الطلبات <span>{filteredTotal.toLocaleString("ar-MA")}</span></strong><span>{loading ? "جارٍ التحديث…" : `عرض ${rows.length} من ${filteredTotal} طلب`}</span></div>
     {error && <div role="alert" className="owner-error">{error}</div>}
-    <div className="owner-orders-table" role="region" aria-label="قائمة الطلبات" tabIndex="0"><table><thead><tr><th>المنتج</th><th>الاسم الكامل</th><th>رقم الهاتف</th><th>المدينة</th><th>حالة الطلب</th><th>المبلغ الإجمالي</th><th>المقاس</th><th>اللون</th><th><button type="button" className="owner-order-sort" onClick={() => updateFilter("sort", filters.sort === "newest" ? "oldest" : "newest")} aria-label={`ترتيب حسب تاريخ الطلب: ${filters.sort === "newest" ? "الأحدث أولاً" : "الأقدم أولاً"}`}>تاريخ الطلب {filters.sort === "newest" ? <ArrowDown size={15} /> : <ArrowUp size={15} />}</button></th></tr></thead><tbody>{rows.map((order) => <tr key={order.id} tabIndex="0" aria-label={`تفاصيل الطلب ${order.order_number}`} onClick={() => openDetail(order.id)} onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); openDetail(order.id); } }}><td><OrderProductSummary order={order} /></td><td title={customerField(order, "name")}>{customerField(order, "name")}</td><td><div className="owner-order-phone" onClick={(event) => event.stopPropagation()}><b dir="ltr" title={customerField(order, "phone")}>{customerField(order, "phone")}</b><CopyPhoneButton phone={order.customer?.phone} /></div></td><td title={customerField(order, "city")}>{customerField(order, "city")}</td><td><div className="owner-order-status-cell" onClick={(event) => event.stopPropagation()}><StatusBadge status={order.status} /><StatusSelect order={order} busy={busyId === order.id} onChange={changeStatus} /></div></td><td className="owner-order-price">{money(order.total_mad)}</td><td title={itemSelection(order, "size")}>{itemSelection(order, "size")}</td><td title={itemSelection(order, "color")}>{itemSelection(order, "color")}</td><td><time dateTime={order.created_at}>{formatDate(order.created_at, dateOnly)}<small>{formatDate(order.created_at, timeOnly)}</small></time></td></tr>)}</tbody></table></div>
+    <div className="owner-orders-table" role="region" aria-label="قائمة الطلبات" tabIndex="0"><table><thead><tr><th>رقم الهاتف</th><th>الاسم الكامل</th><th>المنتج</th><th>اللون</th><th>المقاس</th><th>المدينة</th><th>المبلغ الإجمالي</th><th>حالة الطلب</th><th><button type="button" className="owner-order-sort" onClick={() => updateFilter("sort", filters.sort === "newest" ? "oldest" : "newest")} aria-label={`ترتيب حسب تاريخ الطلب: ${filters.sort === "newest" ? "الأحدث أولاً" : "الأقدم أولاً"}`}>تاريخ الطلب {filters.sort === "newest" ? <ArrowDown size={15} /> : <ArrowUp size={15} />}</button></th></tr></thead><tbody>{rows.map((order) => <tr key={order.id} tabIndex="0" aria-label={`تفاصيل الطلب ${order.order_number}`} onClick={() => openDetail(order.id)} onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); openDetail(order.id); } }}><td><span onClick={(event) => event.stopPropagation()}><PhoneContact order={order} publicProducts={data.publicProducts} /></span></td><td title={customerField(order, "name")}>{customerField(order, "name")}</td><td><OrderProductSummary order={order} /></td><td title={itemSelection(order, "color")}>{itemSelection(order, "color")}</td><td title={itemSelection(order, "size")}>{itemSelection(order, "size")}</td><td title={customerField(order, "city")}>{customerField(order, "city")}</td><td className="owner-order-price">{money(order.total_mad)}</td><td><div className="owner-order-status-cell" onClick={(event) => event.stopPropagation()}><StatusBadge status={order.status} /><StatusSelect order={order} busy={busyId === order.id} onChange={changeStatus} /></div></td><td><time dateTime={order.created_at}>{formatDate(order.created_at, dateOnly)}<small>{formatDate(order.created_at, timeOnly)}</small></time></td></tr>)}</tbody></table></div>
     <div className="owner-order-mobile-list">{rows.map((order) => <article key={order.id} className="owner-order-mobile-card">
+      <div className="owner-order-mobile-phone"><small>رقم الهاتف</small><PhoneContact order={order} publicProducts={data.publicProducts} /></div>
+      <div className="owner-order-mobile-name"><small>الاسم الكامل</small><strong>{customerField(order, "name")}</strong></div>
       <button type="button" className="owner-order-mobile-open" onClick={() => openDetail(order.id)} aria-label={`تفاصيل الطلب ${order.order_number}`}><OrderProductSummary order={order} /></button>
-      <div className="owner-order-mobile-priority"><StatusBadge status={order.status} /><strong>{money(order.total_mad)}</strong></div>
-      <div className="owner-order-mobile-customer"><span className="owner-order-mobile-field"><small>الاسم الكامل</small><strong>{customerField(order, "name")}</strong></span><span className="owner-order-mobile-field"><small>رقم الهاتف</small><span className="owner-order-phone"><b dir="ltr" title={customerField(order, "phone")}>{customerField(order, "phone")}</b><CopyPhoneButton phone={order.customer?.phone} /></span></span></div>
-      <div className="owner-order-mobile-delivery"><span className="owner-order-mobile-field"><small>المدينة</small><span>{customerField(order, "city")}</span></span><span className="owner-order-mobile-field"><small>المقاس</small><span>{itemSelection(order, "size")}</span></span><span className="owner-order-mobile-field"><small>اللون</small><span>{itemSelection(order, "color")}</span></span></div>
-      <div className="owner-order-mobile-footer"><time dateTime={order.created_at}>{formatDate(order.created_at, dateOnly)}<small>{formatDate(order.created_at, timeOnly)}</small></time><div className="owner-order-mobile-actions"><StatusSelect order={order} busy={busyId === order.id} onChange={changeStatus} /><button type="button" className="owner-order-mobile-details" onClick={() => openDetail(order.id)}>عرض التفاصيل</button></div></div>
+      <div className="owner-order-mobile-variants"><span className="owner-order-mobile-field"><small>اللون</small><span>{itemSelection(order, "color")}</span></span><span className="owner-order-mobile-field"><small>المقاس</small><span>{itemSelection(order, "size")}</span></span></div>
+      <div className="owner-order-mobile-city"><small>المدينة</small><span>{customerField(order, "city")}</span></div>
+      <div className="owner-order-mobile-price"><small>المبلغ الإجمالي</small><strong>{money(order.total_mad)}</strong></div>
+      <div className="owner-order-mobile-status"><StatusBadge status={order.status} /><StatusSelect order={order} busy={busyId === order.id} onChange={changeStatus} /></div>
+      <div className="owner-order-mobile-footer"><time dateTime={order.created_at}>{formatDate(order.created_at, dateOnly)}<small>{formatDate(order.created_at, timeOnly)}</small></time><button type="button" className="owner-order-mobile-details" onClick={() => openDetail(order.id)}>عرض التفاصيل</button></div>
     </article>)}</div>
     {!rows.length && !loading && <div className="owner-order-empty">لا توجد طلبات تطابق البحث أو الفلاتر الحالية.</div>}
     {loading && <p className="owner-order-loading" role="status">جارٍ تحميل الطلبات…</p>}
     {filteredTotal > pageSize && <nav className="owner-pagination" aria-label="صفحات الطلبات"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>السابق</button><span>الصفحة {page} من {Math.ceil(filteredTotal / pageSize)}</span><button type="button" disabled={page >= Math.ceil(filteredTotal / pageSize) || loading} onClick={() => setPage(page + 1)}>التالي</button></nav>}
-    {selectedId && <OrderDetail order={detail || selectedSummary} loading={detailLoading} error={detailError} onClose={closeDetail} onStatusChange={changeStatus} onRetrySheet={retrySheet} busy={busyId === selectedId} />}
+    {selectedId && <OrderDetail order={detail || selectedSummary} loading={detailLoading} error={detailError} onClose={closeDetail} onStatusChange={changeStatus} onRetrySheet={retrySheet} busy={busyId === selectedId} publicProducts={data.publicProducts} />}
   </section>;
 }
