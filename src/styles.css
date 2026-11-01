@@ -367,8 +367,13 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .section-heading > div { grid-column: 1 / -1; grid-row: 1; }
   .section-heading .text-link { grid-row: 2; margin-top: 10px; }
   .heading-balance { display: none; }
-  .services-strip { grid-template-columns: 1fr; padding: 20px; }
-  .services-strip > div:not(:last-child) { padding-bottom: 16px; border-inline-end: 0; border-bottom: 1px solid var(--line); }
+  .services-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 16px 12px; }
+  .services-strip > div { min-width: 0; flex-direction: column; justify-content: center; gap: 6px; padding-inline: 8px; text-align: center; }
+  .services-strip > div:not(:last-child) { border-inline-end: 1px solid var(--line); }
+  .services-strip svg { width: 28px; height: 28px; flex: none; }
+  .services-strip span { min-width: 0; gap: 4px; }
+  .services-strip strong { font-size: 12px; line-height: 1.35; }
+  .services-strip small { font-size: 10px; line-height: 1.4; }
   .catalog-title { min-height: 130px; padding: 23px; }
   .catalog-title h1 { font-size: 29px; }
   .catalog-title img { width: 145px; height: 105px; }
@@ -402,6 +407,9 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .hero-trust { width: 100%; justify-content: center; margin-top: 16px; gap: 12px; }
   .hero-trust span { gap: 6px; font-size: 10px; }
   .hero-trust svg { width: 24px; height: 24px; }
+  .services-strip { padding: 12px 6px; }
+  .services-strip > div { padding-inline: 5px; }
+  .services-strip svg { width: 24px; height: 24px; }
   .section-heading h2 { font-size: 25px; }
   .product-image-wrap { aspect-ratio: 4 / 5.4; }
   .featured-section .product-image-wrap { aspect-ratio: 4 / 5; }
