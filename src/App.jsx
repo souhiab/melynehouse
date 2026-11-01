@@ -221,14 +221,13 @@ function CatalogPage({ slug, navigate, wishlist, toggleWishlist, products, categ
   const clear = () => { setSizes([]); setColors([]); setAvailableOnly(false); setSearch(""); };
   const activeFilterCount = sizes.length + colors.length + Number(availableOnly);
   return <main className="catalog-page shell section-space">
-    <div className="breadcrumbs"><Link to="/" navigate={navigate}>الرئيسية</Link><span>/</span><span>{category?.name || "كل المنتجات"}</span></div>
-    <div className="catalog-title"><div><span>كتالوج MELYNE</span><h1>{category?.name || "كل المنتجات"}</h1><p>{base.length} منتجاً من الكتالوج العام</p></div>{category?.imageLocalOptimizedPath && <img src={category.imageLocalOptimizedPath} alt="" />}</div>
+    <header className="catalog-heading"><div className="catalog-heading-title"><h1>{category?.name || "كل المنتجات"}</h1><p>{base.length} منتجًا</p></div><nav className="breadcrumbs" aria-label="مسار الصفحة"><Link to="/" navigate={navigate}>الرئيسية</Link><span aria-hidden="true">/</span><span aria-current="page">{category?.name || "كل المنتجات"}</span></nav></header>
     <div className="catalog-toolbar">
       <button ref={filterButtonRef} type="button" className="filter-toggle" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog" aria-expanded={filtersOpen}><SlidersHorizontal size={19} aria-hidden="true" /> فلترة {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}</button>
       <label className="catalog-search"><MagnifyingGlass size={20} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث في هذه المجموعة" aria-label="البحث في هذه المجموعة" /></label>
       <label className="sort-select">ترتيب حسب <CaretDown size={15} /><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="featured">الأحدث</option><option value="price-asc">السعر: من الأقل</option><option value="price-desc">السعر: من الأعلى</option><option value="name">الاسم</option></select></label>
     </div>
-    <div className="catalog-results"><div className="results-count" aria-live="polite">عرض {filtered.length} من {base.length}</div>
+    <div className="catalog-results">{(search.trim() || activeFilterCount > 0) && <div className="results-count" aria-live="polite">عرض {filtered.length} من {base.length}</div>}
       {activeFilterCount > 0 && <div className="active-filters" aria-label="الفلاتر النشطة">{availableOnly && <button type="button" className="filter-chip" onClick={() => setAvailableOnly(false)}>المتاح فقط <X size={14} /></button>}{sizes.map((size) => <button key={`size-${size}`} type="button" className="filter-chip" onClick={() => toggle(sizes, setSizes, size)}>{size} <X size={14} /></button>)}{colors.map((color) => <button key={`color-${color}`} type="button" className="filter-chip" onClick={() => toggle(colors, setColors, color)}>{color} <X size={14} /></button>)}</div>}
       <ProductGrid items={filtered} navigate={navigate} wishlist={wishlist} toggleWishlist={toggleWishlist} />
     </div>
