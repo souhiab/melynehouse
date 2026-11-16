@@ -114,15 +114,16 @@ test("COD submission revalidates server price and availability and keeps custome
   await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(409);
 });
 
-test("COD order copy is signed server-side and records Google Sheet synchronization status", async (t) => {
+test("COD checkout commits an outbox event without a synchronous webhook call", async (t) => {
   const calls=[];const secret="sheet-test-secret";
-  const system=await setupTestSystem({configOverrides:{googleSheetsWebhookUrl:"https://sheets.example.test/orders",googleSheetsWebhookSecret:secret},fetchImpl:async(url,options)=>{calls.push({url,options});return {ok:true,status:200}}});
+  const system=await setupTestSystem({configOverrides:{sheetSyncEnabled:true,googleSheetsWebhookUrl:"https://sheets.example.test/orders",googleSheetsWebhookSecret:secret},fetchImpl:async(url,options)=>{calls.push({url,options});throw new Error('Checkout must never send');}});
   t.after(async()=>{await system.db.end();await system.cleanup()});
   const catalog=(await request(system.app).get("/api/public/storefront").expect(200)).body;const product=catalog.products.find((entry)=>entry.variants.some((variant)=>variant.availability==="available" && variant.stockQuantity>=1));const variant=product.variants.find((entry)=>entry.availability==="available" && entry.stockQuantity>=1);
   const created=await request(system.app).post("/api/orders").set("idempotency-key",crypto.randomUUID()).send({customer:{name:"عميلة اختبار",phone:"0600000000",city:"الرباط",address:"عنوان خاص"},items:[{productId:product.id,variantId:variant.id,quantity:1}]}).expect(201);
-  assert.equal(created.body.sheetSyncStatus,"synced");assert.equal(calls.length,1);assert.equal(calls[0].url,"https://sheets.example.test/orders");
-  const expected=`sha256=${crypto.createHmac("sha256",secret).update(calls[0].options.body).digest("hex")}`;assert.equal(calls[0].options.headers["x-melyne-signature"],expected);
-  const row=await system.db.query("SELECT sheet_sync_status,sheet_synced_at FROM orders WHERE id=$1",[created.body.id]);assert.equal(row.rows[0].sheet_sync_status,"synced");assert.ok(row.rows[0].sheet_synced_at);
+  assert.equal(created.body.sheetSyncStatus,"pending");assert.equal(calls.length,0);
+  const event=(await system.db.query('SELECT * FROM order_sheet_outbox WHERE order_id=$1',[created.body.id])).rows[0];
+  assert.equal(event.state,'pending');assert.equal(event.payload.order.id,created.body.id);
+  const row=await system.db.query("SELECT sheet_sync_status,sheet_synced_at FROM orders WHERE id=$1",[created.body.id]);assert.equal(row.rows[0].sheet_sync_status,"pending");assert.equal(row.rows[0].sheet_synced_at,null);
 });
 
 test("persistent upload root is separate from deployment output and survives a simulated redeploy", async (t) => {

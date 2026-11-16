@@ -10,7 +10,7 @@ import { applyMigrations } from "./admin-test-helpers.mjs";
 test("catalog migration preserves all 34 products, 468 variants, 207 images and their associations", async () => {
   const source = JSON.parse(await fs.readFile(path.resolve("data/products.json"), "utf8"));
   const memory = newDb({ autoCreateForeignKeyIndices: true }); const adapter = memory.adapters.createPg(); const db = new adapter.Pool();
-  await applyMigrations(db);
+  await applyMigrations(db, { emulated: true });
   const counts = await importCatalog(db, path.resolve("data/products.json"));
   assert.deepEqual(counts, { products: 34, product_variants: 468, product_images: 207, expectedVariants: 468, expectedImages: 207 });
   const loaded = await loadProducts(db, { includeUnpublished: true });

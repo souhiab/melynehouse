@@ -12,6 +12,8 @@ PostgreSQL is the source of truth. Google Sheets receives an operational copy of
 - `banners`: Arabic content, desktop/mobile media, safe destination, status, active range and order.
 - `orders`: private COD customer record, verified source (`website`, `whatsapp`, `instagram`, `facebook`, or `other`), totals calculated by the server, fulfillment status and Google Sheet synchronization state. Owner-created manual orders remain local with sheet synchronization disabled.
 - `order_items`: immutable product and variant snapshots as well as optional live foreign keys. Archiving a product never erases historical order details.
+- `order_sheet_outbox`: one immutable versioned creation event per new website order, committed with inventory/order changes; queue state, attempts, next retry, lease and verified receipt. Manual and historical orders are not automatically enqueued. Delivery is disabled locally.
+- `order_sheet_attempts`: retained per-attempt safe diagnostics, HTTP code and lease outcome, without private order payloads in logs.
 - `admin_users` and `admin_sessions`: scrypt password hashes and hashed, expiring sessions/CSRF tokens. Plaintext passwords and session tokens are never stored.
 - `upload_assets`: immutable metadata and checksums for files written to persistent storage.
 - `admin_audit_log`: owner actions, affected entity and request identifier without storing credentials.

@@ -71,9 +71,9 @@ Restore uploads by copying the contents of a verified `uploads-*` backup back to
 
 ## 6. Google Sheets order copy
 
-The local development configuration intentionally leaves `GOOGLE_SHEETS_WEBHOOK_URL` and `GOOGLE_SHEETS_WEBHOOK_SECRET` empty. Orders therefore remain only in PostgreSQL with synchronization status `disabled`. Do not configure a real Sheet for local testing.
+The local development configuration leaves `GOOGLE_SHEETS_WEBHOOK_URL` and `GOOGLE_SHEETS_WEBHOOK_SECRET` empty, and `SHEET_SYNC_ENABLED` defaults to false. New website orders now record an immutable creation event in PostgreSQL even while delivery is disabled. Historical and manual orders are not automatically queued. Do not configure a real Sheet for local testing.
 
-If a separate staging environment is authorized later, configure an owner-controlled HTTPS webhook and secret there. The API sends JSON with event name `melyne.cod_order.created` and signs the exact body as `x-melyne-signature: sha256=<hex HMAC>`. Sheets must never be used to edit prices, products, availability or banners.
+Checkout does not contact Google. `npm run orders:sync-worker` runs the separate worker; `npm run orders:sync-sheets` processes at most one due event and exits. Both safely exit without sending when disabled. The owner retry action requeues eligible failed events through this same worker; it never reconstructs or directly sends an order. See [Phase 1 setup and contract](order-sync-foundation.md) before enabling a synthetic test destination. Real connection requires separate approval, verified column mapping and signed persistence acknowledgements; an old webhook returning a bare 200 is incompatible. Sheets must never be used to edit catalog prices, products, availability or banners.
 
 ## Security checklist
 

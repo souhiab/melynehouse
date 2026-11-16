@@ -27,7 +27,9 @@
     "admin:create": "node --env-file=.env server/scripts/create-admin.mjs",
     "uploads:backup": "node --env-file=.env server/scripts/backup-uploads.mjs",
     "db:backup": "node --env-file=.env server/scripts/backup-database.mjs",
-    "orders:sync-sheets": "node --env-file=.env server/scripts/sync-orders-to-sheets.mjs",
+    "orders:sync-sheets": "node --env-file=.env server/scripts/sync-orders-to-sheets.mjs --once",
+    "orders:sync-worker": "node --env-file=.env server/scripts/sheet-sync-worker.mjs",
+    "test:sheet-outbox:postgres": "node --env-file=.env --test tests/sheet-outbox-postgres.test.mjs",
     "qa:preview": "node scripts/qa-admin-preview.mjs",
     "check": "npm run validate:catalog && npm run test && npm run build"
   },

@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { transaction } from "./db.mjs";
+import { creationEvent, sheetEventType } from "./sheet-event.mjs";
+import { sheetDeliveryEnabled } from "./sheet-sync.mjs";
 
 const conflict = (message) => Object.assign(new Error(message), { status: 409 });
 const transitions = {
@@ -52,7 +54,7 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
     // parent-before-variant order; no external calls occur while these locks are held.
     const products = new Map();
     for (const productId of [...new Set(lines.map((line) => line.productId))].sort()) {
-      const product = (await client.query("SELECT id,original_name,display_name,status,availability FROM products WHERE id=$1 FOR UPDATE", [productId])).rows[0];
+      const product = (await client.query("SELECT id,sku,original_name,display_name,status,availability FROM products WHERE id=$1 FOR UPDATE", [productId])).rows[0];
       if (!product || product.status !== "published" || product.availability !== "available") throw conflict("A selected product is no longer available");
       products.set(productId, product);
     }
@@ -77,17 +79,30 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
 
     const id = crypto.randomUUID();
     const orderNumber = `MLY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-    const syncStatus = !manual && config.googleSheetsWebhookUrl ? "pending" : "disabled";
+    const syncStatus = !manual && sheetDeliveryEnabled(config) ? "pending" : "disabled";
     const total = (subtotalCents / 100).toFixed(2);
     await client.query(`INSERT INTO orders(id,order_number,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,idempotency_key,request_hash,inventory_state,source,created_by_admin)
       VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,'reserved',$9,$10)`,
     [id, orderNumber, total, JSON.stringify(input.customer), input.note || null, syncStatus, idempotencyKey, requestHash, source, manual]);
+    const eventItems = [];
     for (const { line, variant, product, unitCents } of checked) {
+      const itemId = crypto.randomUUID();
+      const productSnapshot = { id: product.id, originalName: product.original_name, displayName: product.display_name, sku: product.sku || null };
+      const variantSnapshot = { id: variant.id, name: variant.name, selections: variant.selections };
       await client.query(`INSERT INTO order_items(id,order_id,product_id,variant_id,quantity,unit_price_mad,product_snapshot,variant_snapshot)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [crypto.randomUUID(), id, product.id, variant.id, line.quantity, (unitCents / 100).toFixed(2), JSON.stringify({ id: product.id, originalName: product.original_name, displayName: product.display_name }), JSON.stringify({ id: variant.id, name: variant.name, selections: variant.selections })]);
+      [itemId, id, product.id, variant.id, line.quantity, (unitCents / 100).toFixed(2), JSON.stringify(productSnapshot), JSON.stringify(variantSnapshot)]);
+      eventItems.push({ id: itemId, productSnapshot, variantSnapshot, quantity: line.quantity, unitPriceMad: unitCents / 100 });
       await client.query("INSERT INTO stock_movements(id,order_id,variant_id,quantity_delta,reason) VALUES($1,$2,$3,$4,'order_reserved')",
         [crypto.randomUUID(), id, variant.id, -line.quantity]);
+    }
+    if (!manual) {
+      const eventId = crypto.randomUUID();
+      const createdAt = (await client.query("SELECT created_at FROM orders WHERE id=$1", [id])).rows[0].created_at;
+      const payload = creationEvent({ eventId, orderId: id, orderNumber, createdAt: new Date(createdAt).toISOString(),
+        source, customer: input.customer, note: input.note, totalMad: Number(total), items: eventItems });
+      await client.query("INSERT INTO order_sheet_outbox(id,order_id,event_type,schema_version,payload) VALUES($1,$2,$3,1,$4)",
+        [eventId, id, sheetEventType, JSON.stringify(payload)]);
     }
     await client.query("UPDATE order_requests SET order_id=$1 WHERE idempotency_key=$2", [id, idempotencyKey]);
     return { id, orderNumber, totalMad: Number(total), sheetSyncStatus: syncStatus, replayed: false };

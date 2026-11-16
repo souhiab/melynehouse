@@ -1,4 +1,5 @@
 import path from "node:path";
+import { validateSheetEndpoint } from './sheet-sync.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 
@@ -20,7 +21,7 @@ export function loadConfig(env = process.env) {
     throw new Error("GOOGLE_SHEETS_WEBHOOK_SECRET is required when Google Sheet synchronization is enabled");
   }
 
-  return {
+  const config = {
     projectRoot,
     databaseUrl: env.DATABASE_URL,
     port: Number(env.PORT || 8788),
@@ -32,6 +33,11 @@ export function loadConfig(env = process.env) {
     allowedOrigins,
     googleSheetsWebhookUrl: env.GOOGLE_SHEETS_WEBHOOK_URL || null,
     googleSheetsWebhookSecret: env.GOOGLE_SHEETS_WEBHOOK_SECRET || null,
+    sheetSyncEnabled: env.SHEET_SYNC_ENABLED === 'true',
+    sheetSyncAllowedOrigin: env.SHEET_SYNC_ALLOWED_ORIGIN || null,
+    sheetSyncAllowLoopback: !production && env.SHEET_SYNC_ALLOW_LOOPBACK_MOCK === 'true',
   };
+  if(config.sheetSyncEnabled)validateSheetEndpoint(config);
+  return config;
 }
 

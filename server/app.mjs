@@ -11,7 +11,7 @@ import { loadProducts, reorderProducts, saveProduct } from "./catalog-repository
 import { transaction } from "./db.mjs";
 import { bannerSchema, imageColorSchema, loginSchema, manualOrderSchema, orderSchema, parse, productSchema } from "./validation.mjs";
 import { cookieOptions, randomToken, tokenHash, verifyPassword } from "./security.mjs";
-import { syncOrderToSheet } from "./sheet-sync.mjs";
+import { retryFailedSheetEvent, sheetEventStatus } from "./sheet-outbox.mjs";
 import { changeOrderStatus, createOrder } from "./order-service.mjs";
 import { getAdminOrder, listAdminOrders } from "./order-list.mjs";
 
@@ -85,9 +85,8 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
     const input=parse(orderSchema,req.body);
     const order=await createOrder(db,config,input,key);
     if(order.replayed) { res.setHeader("cache-control","no-store"); return res.status(200).json(order); }
-    const sync=await syncOrderToSheet(db,config,order.id,fetchImpl);
     res.setHeader("cache-control","no-store");
-    return res.status(201).json({...order,sheetSyncStatus:sync.status});
+    return res.status(201).json(order);
   }));
 
   const loginLimiter=rateLimit({windowMs:15*60_000,limit:8,standardHeaders:"draft-8",legacyHeaders:false});
@@ -143,7 +142,11 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
   app.post("/api/admin/uploads",upload.single("image"),asyncRoute(async(req,res)=>{ if(!req.file) throw Object.assign(new Error("Image is required"),{status:400}); await finalizeImageUpload(req.file); const checksum=await sha256File(req.file.path); const asset=await recordUpload(db,config,req,req.file,checksum); req.keepUploadedFile=true; await audit(db,req.admin.user_id,"upload","asset",asset.id,{purpose:req.body.purpose||null,requestId:req.requestId}); res.status(201).json({id:asset.id,publicUrl:asset.publicUrl,checksum}); }));
 
   app.get("/api/admin/orders",asyncRoute(async(req,res)=>res.json(await listAdminOrders(db,req.query))));
-  app.get("/api/admin/orders/:id",asyncRoute(async(req,res)=>res.json(await getAdminOrder(db,req.params.id))));
+  app.get("/api/admin/orders/:id",asyncRoute(async(req,res)=>{
+    const order=await getAdminOrder(db,req.params.id);
+    const sheetSync=await sheetEventStatus(db,config,req.params.id);
+    res.json({...order,sheetSync});
+  }));
   app.post("/api/admin/orders",asyncRoute(async(req,res)=>{
     const key=req.get("idempotency-key");
     if(!key || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) throw Object.assign(new Error("A UUID Idempotency-Key header is required"),{status:400});
@@ -154,7 +157,14 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
     res.status(order.replayed?200:201).json(order);
   }));
   app.patch("/api/admin/orders/:id",asyncRoute(async(req,res)=>res.json(await changeOrderStatus(db,req.params.id,String(req.body.status||""),req.admin.user_id,req.requestId))));
-  app.post("/api/admin/orders/:id/retry-sheet-sync",asyncRoute(async(req,res)=>{ const exists=await db.query("SELECT id,created_by_admin FROM orders WHERE id=$1",[req.params.id]); if(!exists.rowCount) throw Object.assign(new Error("Order not found"),{status:404}); if(exists.rows[0].created_by_admin) throw Object.assign(new Error("Manual orders cannot be synchronized to Google Sheets"),{status:409}); await db.query("UPDATE orders SET sheet_sync_status=$1,sheet_sync_error=NULL,updated_at=now() WHERE id=$2",[config.googleSheetsWebhookUrl?"pending":"disabled",req.params.id]); const sync=await syncOrderToSheet(db,config,req.params.id,fetchImpl); await audit(db,req.admin.user_id,"retry_sheet_sync","order",req.params.id,{sheetSyncStatus:sync.status,requestId:req.requestId}); res.json({id:req.params.id,sheetSyncStatus:sync.status,error:sync.error}); }));
+  app.post("/api/admin/orders/:id/retry-sheet-sync",asyncRoute(async(req,res)=>{
+    const exists=await db.query("SELECT id,created_by_admin FROM orders WHERE id=$1",[req.params.id]);
+    if(!exists.rowCount)throw Object.assign(new Error("Order not found"),{status:404});
+    if(exists.rows[0].created_by_admin)throw Object.assign(new Error("Manual orders cannot be synchronized to Google Sheets"),{status:409});
+    const result=await retryFailedSheetEvent(db,config,req.params.id);
+    await audit(db,req.admin.user_id,"retry_sheet_sync","order",req.params.id,{requestId:req.requestId});
+    res.json(result);
+  }));
 
   app.use((error,req,res,next)=>{ if(req.file?.path&&!req.keepUploadedFile) fsp.unlink(req.file.path).catch(()=>{}); const status=error.status||((error.code==="23505"||error.code==="23503")?409:500); if(status>=500) console.error(error); res.status(status).json({error:status>=500?"Server error":error.message,details:error.details,requestId:req.requestId}); });
   return app;
