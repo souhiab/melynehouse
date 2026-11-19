@@ -119,14 +119,11 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     id: product.id,
     sku: product.sku || "",
     slug: product.slug,
-    originalName: product.name,
     displayName: product.displayName,
     description: product.description || "",
     descriptionHtml: product.descriptionHtml || "",
     shortDescription: product.shortDescription || "",
-    costPriceMad: product.costPriceMad,
-    tags: product.tags || [], brandName: product.brandName || "", modelName: product.modelName || "",
-    supplierName: product.supplierName || "", badgeText: product.badgeText || "",
+    badgeText: product.badgeText || "",
     badgeColor: product.badgeColor || "#386549", seoTitle: product.seoTitle || "",
     metaDescription: product.metaDescription || "", weightKg: product.weightKg,
     widthCm: product.widthCm, heightCm: product.heightCm, depthCm: product.depthCm,
@@ -151,12 +148,11 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
   } : {
     sku: "",
     slug: "",
-    originalName: "",
     displayName: "",
     description: "",
     descriptionHtml: "",
-    shortDescription: "", costPriceMad: null, tags: [], brandName: "", modelName: "",
-    supplierName: "", badgeText: "", badgeColor: "#386549", seoTitle: "",
+    shortDescription: "",
+    badgeText: "", badgeColor: "#386549", seoTitle: "",
     metaDescription: "", weightKg: null, widthCm: null, heightCm: null, depthCm: null,
     priceMad: 0,
     comparisonPriceMad: null,
@@ -168,6 +164,19 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     featured: false,
   };
   const [form, setForm] = useState(initial);
+  const [editorCategories, setEditorCategories] = useState(categories);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  const createCategory = async () => {
+    setCategoryBusy(true);setError('');
+    try {
+      const category=await api('/api/admin/categories',{method:'POST',body:JSON.stringify({name:categoryName})});
+      setEditorCategories(current=>[...current,category]);
+      update('categorySlugs',[...form.categorySlugs,category.slug]);
+      setAddingCategory(false);setCategoryName('');
+    } catch(failure){setError(failure.message);} finally{setCategoryBusy(false);}
+  };
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -219,10 +228,13 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
       const nextStatus = event.nativeEvent.submitter?.value === "draft" ? "draft" : form.status;
       const payload = {
         ...form,
+        originalName: product?.name || form.displayName,
+        tags: product?.tags || [], brandName: product?.brandName ?? null,
+        modelName: product?.modelName ?? null, supplierName: product?.supplierName ?? null,
         status: nextStatus,
         priceMad: Number(form.priceMad),
         comparisonPriceMad: form.comparisonPriceMad === "" || form.comparisonPriceMad == null ? null : Number(form.comparisonPriceMad),
-        costPriceMad: form.costPriceMad === "" || form.costPriceMad == null ? null : Number(form.costPriceMad),
+        costPriceMad: product?.costPriceMad ?? null,
         weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg),
         widthCm: form.widthCm === "" || form.widthCm == null ? null : Number(form.widthCm),
         heightCm: form.heightCm === "" || form.heightCm == null ? null : Number(form.heightCm),
@@ -256,25 +268,17 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
       <details className="owner-editor-section" open><summary><Package size={24} /><span><strong>المعلومات العامة</strong><small>الأسماء والأسعار والتصنيف والصور</small></span></summary><div className="owner-editor-section-body owner-general-layout"><div>
         <div className="owner-form-grid">
           <label className="owner-field-wide">اسم المنتج<input value={form.displayName} onChange={(event) => { update("displayName", event.target.value); if (!product && !form.slug) update("slug", safeSlug(event.target.value)); }} required /></label>
-          <label className="owner-field-wide">الاسم الأصلي<input value={form.originalName} onChange={(event) => update("originalName", event.target.value)} required /></label>
+          <fieldset className="owner-field-wide"><legend>فئة المنتج</legend><div className="check-row">{editorCategories.map(category=><label key={category.slug}><input type="checkbox" checked={form.categorySlugs.includes(category.slug)} onChange={event=>update('categorySlugs',event.target.checked?[...form.categorySlugs,category.slug]:form.categorySlugs.filter(value=>value!==category.slug))}/>{category.name}</label>)}</div><button type="button" className="quiet" onClick={()=>setAddingCategory(true)}>+ إضافة فئة جديدة</button>{addingCategory&&<div><label>اسم الفئة<input value={categoryName} maxLength={120} onChange={event=>setCategoryName(event.target.value)}/></label><button type="button" disabled={categoryBusy} onClick={createCategory}>حفظ الفئة</button><button type="button" onClick={()=>{setAddingCategory(false);setCategoryName('');}}>إلغاء</button></div>}</fieldset>
           <label>سعر البيع (MAD)<input type="number" min="0" step="0.01" value={form.priceMad} onChange={(event) => update("priceMad", event.target.value)} required /></label>
           <label>السعر قبل التخفيض (MAD)<input type="number" min="0" step="0.01" value={form.comparisonPriceMad ?? ""} onChange={(event) => update("comparisonPriceMad", event.target.value)} /></label>
-          <label>سعر الشراء الداخلي (MAD)<input type="number" min="0" step="0.01" value={form.costPriceMad ?? ""} onChange={(event) => update("costPriceMad", event.target.value)} /><small>لا يظهر للعملاء.</small></label>
-          <label>العلامة التجارية<input value={form.brandName} onChange={(event) => update("brandName", event.target.value)} placeholder="اختياري" /></label>
-          <label>الموديل<input value={form.modelName} onChange={(event) => update("modelName", event.target.value)} placeholder="اختياري" /></label>
-          <label>المورد (داخلي)<input value={form.supplierName} onChange={(event) => update("supplierName", event.target.value)} placeholder="اختياري" /></label>
-          <label className="owner-field-wide">وسوم المنتج (مفصولة بفواصل)<input value={form.tags.join(", ")} onChange={(event) => update("tags", [...new Set(event.target.value.split(",").map((value) => value.trim()).filter(Boolean))])} /></label>
           <label>شارة المنتج<input maxLength="40" value={form.badgeText} onChange={(event) => update("badgeText", event.target.value)} placeholder="مثلاً: جديد" /></label>
           <label>لون الشارة<input type="color" value={form.badgeColor} onChange={(event) => update("badgeColor", event.target.value)} /></label>
         </div>
-        <fieldset><legend>التصنيفات</legend><div className="check-row">{categories.map((category) => <label key={category.slug}><input type="checkbox" checked={form.categorySlugs.includes(category.slug)} onChange={(event) => update("categorySlugs", event.target.checked ? [...form.categorySlugs, category.slug] : form.categorySlugs.filter((value) => value !== category.slug))} />{category.name}</label>)}</div></fieldset>
         <label className="check"><input type="checkbox" checked={form.featured} onChange={(event) => update("featured", event.target.checked)} /> منتج مميز في الصفحة الرئيسية</label>
-      </div><div className="owner-editor-images">{product ? <ImageManager product={product} onChanged={onImagesChanged} /> : <div className="owner-image-first-save"><Image size={42} /><strong>صور المنتج</strong><p>احفظ المنتج كمسودة أولاً، ثم أضف الصور من هذا القسم.</p></div>}</div></div></details>
-      <details className="owner-editor-section"><summary><FileText size={24} /><span><strong>وصف المنتج</strong><small>وصف مختصر وتفاصيل غنية بالتنسيق</small></span></summary><div className="owner-editor-section-body">
         <label>وصف مختصر<textarea rows="3" maxLength="2000" value={form.shortDescription} onChange={(event) => update("shortDescription", event.target.value)} /></label>
         <label>الوصف الأصلي<textarea rows="4" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>
-        <div className="owner-rich-label">وصف المنتج بالتفصيل</div><RichTextEditor initialHtml={form.descriptionHtml} onChange={(html) => update("descriptionHtml", html)} />
-      </div></details>
+        <div className="owner-rich-label">وصف المنتج</div><RichTextEditor initialHtml={form.descriptionHtml} onChange={(html) => update("descriptionHtml", html)} />
+      </div><div className="owner-editor-images">{product ? <ImageManager product={product} onChanged={onImagesChanged} /> : <div className="owner-image-first-save"><Image size={42} /><strong>صور المنتج</strong><p>احفظ المنتج كمسودة أولاً، ثم أضف الصور من هذا القسم.</p></div>}</div></div></details>
       <details className="owner-editor-section"><summary><ListNumbers size={24} /><span><strong>الخيارات والمتغيرات</strong><small>المقاسات والألوان وتوفر كل توليفة</small></span></summary><div className="owner-editor-section-body">
         <div className="owner-form-grid"><label>المقاسات (مفصولة بفواصل)<input value={optionValues("size")} onChange={(event) => setOptionValues("size", event.target.value)} /></label><label>الألوان (مفصولة بفواصل)<input value={optionValues("color")} onChange={(event) => setOptionValues("color", event.target.value)} /></label></div>
         <div className="owner-custom-options">{form.options.filter((option) => !optionKind(option)).map((option) => <div key={option.id} className="owner-custom-option"><label>اسم الخيار<input value={option.name} onChange={(event) => changeCustomOption(option.id, { name: event.target.value })} /></label><label>القيم (مفصولة بفواصل)<input value={option.values.map((value) => value.label).join(", ")} onChange={(event) => changeCustomOption(option.id, { values: optionValuesFromText(event.target.value, option.values, option.id) })} /></label><button type="button" className="danger" onClick={() => removeCustomOption(option.id)}>إزالة الخيار</button></div>)}<button type="button" className="quiet" onClick={addCustomOption}>+ إضافة خيار آخر مثل المادة</button></div>

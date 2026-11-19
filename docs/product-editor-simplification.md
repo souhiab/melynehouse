@@ -1,0 +1,11 @@
+# Product editor simplification
+
+Local changes, 2026-11-19. Branch: `feature/product-editor-simplification`.
+
+- `src/admin/AdminApp.jsx`: removes six unwanted inputs and their editable state. Existing original name, cost, tags, brand, model and supplier remain compatibility values sourced from the loaded product on save. New products use the main name as original name. No metadata columns are dropped.
+- General Information now holds category selection/creation, prices, the three distinct descriptions and existing image controls. The single rich editor uses existing `descriptionHtml`; original text remains `description`, and short text remains `shortDescription`. The separate description accordion is removed. Variants, SEO and sticky save controls remain.
+- `server/app.mjs`: authenticated, CSRF-protected category creation reuses `categories`. A transaction serializes category creation and rejects normalized duplicate names/slugs, empty names and unusable slugs. New categories receive a stable UUID and Arabic-safe slug. No migration is needed. Existing `/shop/:slug` listings use database categories; new categories are not automatically added to primary navigation.
+- `src/App.jsx`: only the exchange-policy presentation changes, with semantic headings and related paragraphs. The 72-hour period, original condition/gifts, free same-item manufacturing-defect exchange, customer-paid city-dependent transportation, misuse exclusion, no refunds, 30% opened-package deduction and published phone remain. Source data is untouched. The source's reference to “ديليك” remains rather than silently changing the publisher. The interaction between free defect exchange and the 30% deduction remains unclear and requires owner confirmation.
+- `tests/product-editor-postgres.test.mjs`: real isolated PostgreSQL coverage of category authorization, CSRF, persistence, normalized duplicate rejection, invalid names and existing editor/media/metadata/publication workflow. Lifecycle PostgreSQL tests passed. No main catalog records or customer orders were changed.
+
+Browser and responsive visual QA remain unverified; the browser access host was unavailable. The application build and API tests do not substitute for screenshots at 1440, 1280, 768, 390 and 360px. No deployment, push, Sheet integration change or inventory transaction change was made.

@@ -61,6 +61,13 @@ test("real PostgreSQL owner workflow saves draft, images, metadata, publication 
   const agent = request.agent(app);
   const login = await agent.post("/api/admin/session").send({ email: "owner-editor@example.test", password: "local-test-password" }).expect(200);
   const csrf = csrfFrom(login);
+  await request(app).post('/api/admin/categories').send({name:'فئة جديدة'}).expect(401);
+  await agent.post('/api/admin/categories').send({name:'فئة جديدة'}).expect(403);
+  const newCategory=(await agent.post('/api/admin/categories').set('x-csrf-token',csrf).send({name:'فئة جديدة'}).expect(201)).body;
+  assert.equal(newCategory.slug,'فئة-جديدة');
+  await agent.post('/api/admin/categories').set('x-csrf-token',csrf).send({name:' فئة   جديدة '}).expect(409);
+  await agent.post('/api/admin/categories').set('x-csrf-token',csrf).send({name:'   '}).expect(400);
+  assert.ok((await agent.get('/api/public/storefront').expect(200)).body.categories.some(category=>category.id===newCategory.id));
   const payload = { slug: "real-editor-test", originalName: "الاسم الأصلي", displayName: "منتج محلي", description: "وصف", shortDescription: "مختصر", descriptionHtml: "<h2>تفاصيل</h2>", priceMad: 120, comparisonPriceMad: 150, costPriceMad: 50, tags: ["أطفال"], brandName: "MELYNE", modelName: "M1", supplierName: "مورد خاص", badgeText: "جديد", badgeColor: "#386549", seoTitle: "عنوان البحث", metaDescription: "وصف البحث", weightKg: 0.2, widthCm: 10, heightCm: 20, depthCm: 2, availability: "available", status: "draft", categorySlugs: ["kids"], options: [], variants: [], featured: false };
   const created = await agent.post("/api/admin/products").set("x-csrf-token", csrf).send(payload).expect(201);
   const id = created.body.id;

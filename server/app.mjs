@@ -96,6 +96,22 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
 
   app.use("/api/admin",authenticate,csrf,(req,res,next)=>{ res.setHeader("cache-control","no-store"); next(); });
   app.get("/api/admin/products",asyncRoute(async(req,res)=>res.json({products:await loadProducts(db,{includeUnpublished:true})})));
+  app.post("/api/admin/categories",asyncRoute(async(req,res)=>{
+    if(typeof req.body.name!=="string")throw Object.assign(new Error("اسم الفئة مطلوب"),{status:400});
+    const name=req.body.name.normalize('NFKC').trim().replace(/\s+/g,' ');
+    if(!name||name.length>120)throw Object.assign(new Error("اسم الفئة غير صالح"),{status:400});
+    const slug=name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'');
+    if(!slug)throw Object.assign(new Error("اسم الفئة غير صالح"),{status:400});
+    const category=await transaction(db,async client=>{
+      await client.query('LOCK TABLE categories IN SHARE ROW EXCLUSIVE MODE');
+      const rows=(await client.query('SELECT id,name,slug FROM categories')).rows;
+      if(rows.some(row=>row.name.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase()===name.toLowerCase()||row.slug===slug))throw Object.assign(new Error("هذه الفئة موجودة بالفعل"),{status:409});
+      const result=await client.query('INSERT INTO categories(id,name,slug,sort_position) VALUES($1,$2,$3,(SELECT COALESCE(MAX(sort_position),0)+1 FROM categories)) RETURNING id,name,slug',[makeId(),name,slug]);
+      return result.rows[0];
+    });
+    await audit(db,req.admin.user_id,'create','category',category.id,{requestId:req.requestId});
+    res.status(201).json(category);
+  }));
   app.post("/api/admin/products",asyncRoute(async(req,res)=>{ const input=parse(productSchema,req.body); const id=await saveProduct(db,input); await audit(db,req.admin.user_id,"create","product",id,{requestId:req.requestId}); res.status(201).json({id}); }));
   app.put("/api/admin/products/:id",asyncRoute(async(req,res)=>{ const input=parse(productSchema,req.body); const id=await saveProduct(db,input,req.params.id); await audit(db,req.admin.user_id,"update","product",id,{requestId:req.requestId}); res.json({id}); }));
   app.post("/api/admin/products/:id/archive",asyncRoute(async(req,res)=>{ const result=await db.query("UPDATE products SET status='archived',archived_at=now(),featured=false,updated_at=now() WHERE id=$1 RETURNING id",[req.params.id]); if(!result.rowCount) throw Object.assign(new Error("Product not found"),{status:404}); await audit(db,req.admin.user_id,"archive","product",req.params.id,{requestId:req.requestId}); res.json({id:req.params.id,status:"archived"}); }));

@@ -1,5 +1,7 @@
 # Prototype Instructions
 
+Product editor preference: General Information contains product name, persistent category selection/creation, sale/comparison prices, short/original/formatted descriptions and existing images. Do not show original-name, purchase-cost, brand, model, supplier or tags inputs; preserve legacy metadata on save. Keep only one formatted description editor, with no separate detailed-description panel. Exchange-policy presentation uses coherent Arabic paragraphs without changing its published conditions.
+
 Run the local server yourself and open the preview in the browser available to this environment. Do not give the user server-start instructions when you can run it.
 
 Before making substantial visual changes, use the Product Design plugin's `get-context` skill when the visual source is unclear or no longer matches the current goal. When the user gives durable prototype-specific design feedback, preferences, or decisions, record them in `AGENTS.md`.
