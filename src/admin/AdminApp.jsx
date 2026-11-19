@@ -27,7 +27,6 @@ import {
   Warehouse,
   X,
 } from "@phosphor-icons/react";
-import { RichTextEditor } from "./RichTextEditor.jsx";
 import { AnalyticsPanel, CollectionsPanel, DashboardPanel, MetadataPanel, StockPanel } from "./OwnerViews.jsx";
 import { colorOptionFor, colorOfVariant } from "../product-colors.js";
 import { deriveProductStats, filterOwnerProducts } from "./product-stats.js";
@@ -121,7 +120,6 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     slug: product.slug,
     displayName: product.displayName,
     description: product.description || "",
-    descriptionHtml: product.descriptionHtml || "",
     shortDescription: product.shortDescription || "",
     badgeText: product.badgeText || "",
     badgeColor: product.badgeColor || "#386549", seoTitle: product.seoTitle || "",
@@ -150,7 +148,6 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     slug: "",
     displayName: "",
     description: "",
-    descriptionHtml: "",
     shortDescription: "",
     badgeText: "", badgeColor: "#386549", seoTitle: "",
     metaDescription: "", weightKg: null, widthCm: null, heightCm: null, depthCm: null,
@@ -241,7 +238,7 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
         depthCm: form.depthCm === "" || form.depthCm == null ? null : Number(form.depthCm),
         sku: form.sku || null,
         description: form.description || null,
-        descriptionHtml: form.descriptionHtml || null,
+        descriptionHtml: product?.descriptionHtml ?? null,
         variants: form.variants.map((variant) => ({
           ...variant,
           priceMad: Number(variant.priceMad),
@@ -275,9 +272,8 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
           <label>لون الشارة<input type="color" value={form.badgeColor} onChange={(event) => update("badgeColor", event.target.value)} /></label>
         </div>
         <label className="check"><input type="checkbox" checked={form.featured} onChange={(event) => update("featured", event.target.checked)} /> منتج مميز في الصفحة الرئيسية</label>
-        <label>وصف مختصر<textarea rows="3" maxLength="2000" value={form.shortDescription} onChange={(event) => update("shortDescription", event.target.value)} /></label>
-        <label>الوصف الأصلي<textarea rows="4" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>
-        <div className="owner-rich-label">وصف المنتج</div><RichTextEditor initialHtml={form.descriptionHtml} onChange={(html) => update("descriptionHtml", html)} />
+        <label>وصف مختصر<textarea className="owner-description-fixed" rows="4" maxLength="2000" value={form.shortDescription} onChange={(event) => update("shortDescription", event.target.value)} /></label>
+        <label>الوصف الأصلي<textarea className="owner-description-fixed" rows="4" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>
       </div><div className="owner-editor-images">{product ? <ImageManager product={product} onChanged={onImagesChanged} /> : <div className="owner-image-first-save"><Image size={42} /><strong>صور المنتج</strong><p>احفظ المنتج كمسودة أولاً، ثم أضف الصور من هذا القسم.</p></div>}</div></div></details>
       <details className="owner-editor-section"><summary><ListNumbers size={24} /><span><strong>الخيارات والمتغيرات</strong><small>المقاسات والألوان وتوفر كل توليفة</small></span></summary><div className="owner-editor-section-body">
         <div className="owner-form-grid"><label>المقاسات (مفصولة بفواصل)<input value={optionValues("size")} onChange={(event) => setOptionValues("size", event.target.value)} /></label><label>الألوان (مفصولة بفواصل)<input value={optionValues("color")} onChange={(event) => setOptionValues("color", event.target.value)} /></label></div>

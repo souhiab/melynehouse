@@ -348,3 +348,5 @@
 .owner-order-mobile-footer time small { color: #7b877e; font-size: 11px; }
 .owner-app .owner-order-mobile-details { width: auto; min-height: 29px; padding: 4px 9px; border: 1px solid var(--owner-line); border-radius: 7px; background: #f6f8f5; color: var(--owner-green); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
 .owner-app .owner-order-mobile-details:hover { background: #e7efe8; }
+
+.owner-product-editor textarea.owner-description-fixed { width:100%; height:110px; min-height:110px; max-height:110px; resize:none; overflow-y:auto; direction:rtl; box-sizing:border-box; }
