@@ -1,3 +1,4 @@
+import { OptionChips } from "./OptionChips.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
@@ -31,7 +32,7 @@ import { AnalyticsPanel, CollectionsPanel, DashboardPanel, MetadataPanel, StockP
 import { colorOptionFor, colorOfVariant } from "../product-colors.js";
 import { deriveProductStats, filterOwnerProducts } from "./product-stats.js";
 import { readSidebarPreference, saveSidebarPreference } from "./sidebar-preference.js";
-import { buildVariants, optionValuesFromText, selectionSignature } from "./variant-lifecycle.js";
+import { buildVariants, selectionSignature } from "./variant-lifecycle.js";
 import { NewOrderPanel } from "./OrderManagement.jsx";
 import { OrdersPanel } from "./OrdersDashboard.jsx";
 import { ownerNavigation, ownerPathForTab, ownerSectionForTab, ownerTabFromPath } from "./owner-navigation.js";
@@ -187,32 +188,6 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
   }, [dirty]);
   const update = (key, value) => { setDirty(true); setForm((current) => ({ ...current, [key]: value })); };
   const cancel = () => { if (!dirty || window.confirm("هناك تغييرات غير محفوظة. هل تريد المغادرة؟")) onCancel(); };
-  const optionValues = (kind) => form.options.find((option) => optionKind(option) === kind)?.values?.map((value) => value.label).join(", ") || "";
-  const setOptionValues = (kind, text) => {
-    setDirty(true);
-    setForm((current) => {
-      const old = current.options.find((option) => optionKind(option) === kind);
-      const values = optionValuesFromText(text, old?.values, `owner-${kind}`);
-      const nextOption = { id: old?.id || `owner-${kind}`, name: old?.name || (kind === "size" ? "Size" : "Color"), key: old?.key ?? (kind === "size" ? "size" : null), values };
-      const options = [...current.options.filter((option) => optionKind(option) !== kind), nextOption];
-      return { ...current, options, variants: buildVariants(options, current.variants, current.priceMad, current.comparisonPriceMad) };
-    });
-  };
-  const addCustomOption = () => {
-    const id = `owner-option-${crypto.randomUUID()}`;
-    update("options", [...form.options, { id, key: id, name: "المادة", values: [] }]);
-  };
-  const changeCustomOption = (id, change) => {
-    const options = form.options.map((option) => option.id === id ? { ...option, ...change } : option);
-    update("options", options);
-    update("variants", buildVariants(options, form.variants, form.priceMad, form.comparisonPriceMad));
-  };
-  const removeCustomOption = (id) => {
-    if (!window.confirm("إزالة هذا الخيار وتوليفاته؟ قد تتطلب التوليفات المرتبطة بطلبات سابقة مراجعة.")) return;
-    const options = form.options.filter((option) => option.id !== id);
-    update("options", options);
-    update("variants", buildVariants(options, form.variants, form.priceMad, form.comparisonPriceMad));
-  };
   const updateVariant = (index, change) => update("variants", form.variants.map((variant, itemIndex) => itemIndex === index ? { ...variant, ...change } : variant));
   const save = async (event) => {
     event.preventDefault();
@@ -276,8 +251,7 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
         <label>الوصف الأصلي<textarea className="owner-description-fixed" rows="4" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>
       </div><div className="owner-editor-images">{product ? <ImageManager product={product} onChanged={onImagesChanged} /> : <div className="owner-image-first-save"><Image size={42} /><strong>صور المنتج</strong><p>احفظ المنتج كمسودة أولاً، ثم أضف الصور من هذا القسم.</p></div>}</div></div></details>
       <details className="owner-editor-section"><summary><ListNumbers size={24} /><span><strong>الخيارات والمتغيرات</strong><small>المقاسات والألوان وتوفر كل توليفة</small></span></summary><div className="owner-editor-section-body">
-        <div className="owner-form-grid"><label>المقاسات (مفصولة بفواصل)<input value={optionValues("size")} onChange={(event) => setOptionValues("size", event.target.value)} /></label><label>الألوان (مفصولة بفواصل)<input value={optionValues("color")} onChange={(event) => setOptionValues("color", event.target.value)} /></label></div>
-        <div className="owner-custom-options">{form.options.filter((option) => !optionKind(option)).map((option) => <div key={option.id} className="owner-custom-option"><label>اسم الخيار<input value={option.name} onChange={(event) => changeCustomOption(option.id, { name: event.target.value })} /></label><label>القيم (مفصولة بفواصل)<input value={option.values.map((value) => value.label).join(", ")} onChange={(event) => changeCustomOption(option.id, { values: optionValuesFromText(event.target.value, option.values, option.id) })} /></label><button type="button" className="danger" onClick={() => removeCustomOption(option.id)}>إزالة الخيار</button></div>)}<button type="button" className="quiet" onClick={addCustomOption}>+ إضافة خيار آخر مثل المادة</button></div>
+        <OptionChips options={form.options} onChange={options => update('options', options)} onConfirm={() => update('variants', buildVariants(form.options, form.variants, form.priceMad, form.comparisonPriceMad))} />
         <p className="owner-editor-note">يُعاد استخدام معرّف التوليفة الموجودة عند بقاء خياراتها كما هي. المخزون غير المحدد لا يقبل طلبات.</p>
         <p className="owner-editor-note">المتاح مؤقتاً يمكن إيقافه دون حذف. نفاد المخزون يعني كمية صفر، أما التوليفة المتقاعدة فتبقى للطلبات وسجل المخزون ولا تظهر للشراء. إعادة تنشيطها تبدأ بحالة غير متاحة حتى تراجع مخزونها.</p>
         {form.variants.length > 0 && <div className="variant-table" role="region" aria-label="توليفات المنتج" tabIndex="0"><table><thead><tr><th>الحالة</th><th>التوليفة</th><th>السعر</th><th>السعر السابق</th><th>المخزون</th><th>صورة التوليفة</th><th>الإجراء</th></tr></thead><tbody>{form.variants.map((variant, index) => {
