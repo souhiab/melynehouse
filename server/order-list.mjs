@@ -26,10 +26,11 @@ export function parseOrderFilters(query = {}) {
   return { page, search, status, source, dateFrom, dateTo, sort };
 }
 
-function filterSql(filters) {
+function filterSql(filters,assignedTo=null) {
   const conditions = [];
   const values = [];
   const add = (value) => { values.push(value); return `$${values.length}`; };
+  if(assignedTo)conditions.push(`EXISTS(SELECT 1 FROM order_assignments assigned WHERE assigned.order_id=o.id AND assigned.assigned_to=${add(assignedTo)})`);
   if (filters.search) {
     const value = add(`%${filters.search}%`);
     conditions.push(`(o.order_number ILIKE ${value}
@@ -46,13 +47,13 @@ function filterSql(filters) {
   return { where: conditions.length ? `WHERE ${conditions.join(" AND ")}` : "", values };
 }
 
-const orderColumns = "o.id,o.order_number,o.status,o.source,o.created_by_admin,o.currency,o.subtotal_mad,o.total_mad,o.customer,o.customer_note,o.sheet_sync_status,o.sheet_sync_error,o.sheet_synced_at,o.created_at";
+const orderColumns = "o.id,o.order_number,o.status,o.source,o.created_by_admin,o.currency,o.subtotal_mad,o.discount_mad,o.discount_code,o.total_mad,o.customer,o.customer_note,o.sheet_sync_status,o.sheet_sync_error,o.sheet_synced_at,o.created_at";
 
 async function attachItems(db, orders) {
   const ids = orders.map((order) => order.id);
   if (!ids.length) return [];
-  const items = (await db.query(`SELECT oi.order_id,oi.product_id,oi.quantity,oi.unit_price_mad,oi.product_snapshot,oi.variant_snapshot,pi.public_url AS thumbnail_url
-    FROM order_items oi LEFT JOIN product_variants pv ON pv.id=oi.variant_id LEFT JOIN product_images pi ON pi.id=pv.image_id
+  const items = (await db.query(`SELECT oi.order_id,oi.product_id,oi.quantity,oi.unit_price_mad,oi.product_snapshot,oi.variant_snapshot,pi.public_url AS thumbnail_url,pv.stock_quantity,pv.available,pv.retired_at,live.status AS product_status,live.availability AS product_availability
+    FROM order_items oi LEFT JOIN product_variants pv ON pv.id=oi.variant_id LEFT JOIN product_images pi ON pi.id=pv.image_id LEFT JOIN products live ON live.id=oi.product_id
     WHERE oi.order_id=ANY($1::uuid[]) ORDER BY oi.created_at,oi.id`, [ids])).rows;
   const productIds = [...new Set(items.map((item) => item.product_id).filter(Boolean))];
   const images = productIds.length ? (await db.query("SELECT product_id,public_url FROM product_images WHERE product_id=ANY($1::text[]) AND archived_at IS NULL ORDER BY sort_position,id", [productIds])).rows : [];
@@ -62,20 +63,25 @@ async function attachItems(db, orders) {
   for (const item of items) byOrder.get(item.order_id)?.push({
     quantity: item.quantity, unitPriceMad: Number(item.unit_price_mad), productSnapshot: item.product_snapshot,
     variantSnapshot: item.variant_snapshot, thumbnailUrl: item.thumbnail_url || firstImage.get(item.product_id) || null,
+    currentInventory:{stockQuantity:item.stock_quantity??null,available:item.available===true&&item.product_availability==='available',retired:Boolean(item.retired_at),productStatus:item.product_status||'unknown'},
   });
-  return orders.map((order) => ({ ...order, subtotal_mad: Number(order.subtotal_mad), total_mad: Number(order.total_mad), items: byOrder.get(order.id) || [] }));
+  const latest=(await db.query("SELECT entity_id,action,details FROM admin_audit_log WHERE entity_type='order' AND entity_id=ANY($1::text[]) AND action IN ('status_change','confirmation_outcome') ORDER BY created_at DESC,id DESC",[ids])).rows;
+  const outcomes=new Map();for(const entry of latest)if(!outcomes.has(entry.entity_id))outcomes.set(entry.entity_id,entry.action==='confirmation_outcome'?entry.details?.outcome:null);
+  return orders.map((order) => ({ ...order, confirmationOutcome:outcomes.get(order.id)||null,subtotal_mad: Number(order.subtotal_mad), total_mad: Number(order.total_mad), items: byOrder.get(order.id) || [] }));
 }
 
-export async function listAdminOrders(db, query) {
+export async function listAdminOrders(db, query, {assignedTo=null,singleOrder=false}={}) {
   const filters = parseOrderFilters(query);
-  const pageSize = 50;
-  const { where, values } = filterSql(filters);
+  const pageSize = singleOrder?1:50;
+  const { where, values } = filterSql(filters,assignedTo);
+  const scope=assignedTo?'WHERE EXISTS(SELECT 1 FROM order_assignments assigned WHERE assigned.order_id=orders.id AND assigned.assigned_to=$1)':'';
+  const scopeValues=assignedTo?[assignedTo]:[];
   const direction = filters.sort === "oldest" ? "ASC" : "DESC";
   const [result, matching, totals, grouped] = await Promise.all([
     db.query(`SELECT ${orderColumns} FROM orders o ${where} ORDER BY o.created_at ${direction},o.id ${direction} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`, [...values, pageSize, (filters.page - 1) * pageSize]),
     db.query(`SELECT COUNT(*) AS total FROM orders o ${where}`, values),
-    db.query("SELECT COUNT(*) AS total, SUM(CASE WHEN status <> 'cancelled' THEN 1 ELSE 0 END) AS accepted, SUM(CASE WHEN status NOT IN ('delivered','cancelled') THEN 1 ELSE 0 END) AS open, COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN total_mad ELSE 0 END),0) AS accepted_total_mad FROM orders"),
-    db.query("SELECT status,COUNT(*) AS total FROM orders GROUP BY status"),
+    db.query(`SELECT COUNT(*) AS total, SUM(CASE WHEN status <> 'cancelled' THEN 1 ELSE 0 END) AS accepted, SUM(CASE WHEN status NOT IN ('delivered','cancelled') THEN 1 ELSE 0 END) AS open, COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN total_mad ELSE 0 END),0) AS accepted_total_mad FROM orders ${scope}`,scopeValues),
+    db.query(`SELECT status,COUNT(*) AS total FROM orders ${scope} GROUP BY status`,scopeValues),
   ]);
   const total = totals.rows[0];
   return {

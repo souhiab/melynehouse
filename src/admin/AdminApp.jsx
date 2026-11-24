@@ -1,6 +1,14 @@
+import {ConfirmationWorkspace} from './ConfirmationWorkspace.jsx';
+import {StorePanel} from './StorePanel.jsx';
+import {MarketingPanel,MarketingIcon} from './MarketingPanel.jsx';
+import {TeamPerformance,AnalyticsNavigation} from './TeamPerformance.jsx';
+import {TeamRoleContext} from './team-access.js';
+import {TeamPanel} from './TeamPanel.jsx';
 import { OptionChips } from "./OptionChips.jsx";
+import { ProductImagePicker } from './ProductImagePicker.jsx';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Swatches, Images, Files, ListBullets, Palette, Article,
   Archive,
   ArrowDown,
   ArrowUp,
@@ -15,6 +23,7 @@ import {
   Image,
   List,
   ListNumbers,
+  Megaphone,
   MagnifyingGlass,
   Package,
   Plus,
@@ -35,7 +44,7 @@ import { readSidebarPreference, saveSidebarPreference } from "./sidebar-preferen
 import { buildVariants, selectionSignature } from "./variant-lifecycle.js";
 import { NewOrderPanel } from "./OrderManagement.jsx";
 import { OrdersPanel } from "./OrdersDashboard.jsx";
-import { ownerNavigation, ownerPathForTab, ownerSectionForTab, ownerTabFromPath } from "./owner-navigation.js";
+import { ownerLandingTab, canAccessOwnerTab, ownerNavigation, ownerPathForTab, ownerSectionForTab, ownerTabFromPath } from "./owner-navigation.js";
 import "./admin.css";
 
 const csrfToken = () => decodeURIComponent(
@@ -115,6 +124,24 @@ const optionKind = (option) => {
 };
 
 function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged, onDirtyChange }) {
+  const [imagePickerOpen,setImagePickerOpen]=useState(false);
+  const pendingImageKey=`melyne-draft-images-${product?.id||'new'}`;
+  const [pendingImages,setPendingImages]=useState(()=>{try{return JSON.parse(localStorage.getItem(pendingImageKey)||'[]');}catch{return [];}});
+  useEffect(()=>{try{localStorage.setItem(pendingImageKey,JSON.stringify(pendingImages.filter(item=>!item.file)));}catch{}},[pendingImages,pendingImageKey]);
+  const savedId=useRef(product?.id||null);
+  const draftId=useRef(product?.id||crypto.randomUUID());
+  const draftInFlight=useRef(Promise.resolve());
+  const [autoSaveStatus,setAutoSaveStatus]=useState('');
+  const pendingUrls=useRef([]);
+  useEffect(()=>()=>pendingUrls.current.forEach(URL.revokeObjectURL),[]);
+  const attachImage=async(id,item)=>{
+    if(item.file){const body=new FormData();body.append('image',item.file);await api(`/api/admin/products/${id}/images`,{method:'POST',body});}
+    else await api(`/api/admin/products/${id}/images/from-library`,{method:'POST',body:JSON.stringify(item.assetId?{assetId:item.assetId}:{imageId:item.imageId})});
+  };
+  const selectImages=async (items,onInserted)=>{
+    if(product){try{for(const item of items){await attachImage(product.id,item);onInserted?.(item.key);}}finally{await onImagesChanged();}}
+    else{setPendingImages(current=>[...current,...items.map(item=>{if(!item.file)return item;const preview=URL.createObjectURL(item.file);pendingUrls.current.push(preview);return {...item,preview};})]);setDirty(true);}
+  };
   const initial = product ? {
     id: product.id,
     sku: product.sku || "",
@@ -161,11 +188,40 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     variants: [],
     featured: false,
   };
-  const [form, setForm] = useState(initial);
+  const recoveryKey=`melyne-product-draft-${product?.id||'new'}`;
+  const [form, setForm] = useState(()=>{
+    if(product&&product.status!=='draft')return initial;
+    const remote=product?.sourceMetadata?.draftEditorRecovery;
+    try{const local=JSON.parse(localStorage.getItem(recoveryKey)||'null');if(local?.state){draftId.current=local.id;return {...initial,...local.state};}}catch{}
+    return remote?{...initial,...remote}:initial;
+  });
+  useEffect(()=>{
+    if(form.status!=='draft')return;
+    const snapshot={...form,pendingImages:undefined};
+    try{localStorage.setItem(recoveryKey,JSON.stringify({id:draftId.current,state:snapshot}));}catch{}
+    setAutoSaveStatus('جارٍ حفظ المسودة تلقائياً…');
+    const flush=()=>{
+      const work=()=>api(`/api/admin/products/${draftId.current}/draft-state`,{method:'PUT',body:JSON.stringify({state:snapshot})}).then(result=>{savedId.current=draftId.current;setForm(current=>current.sku!==snapshot.sku||current.sku===result.sku?current:{...current,sku:result.sku});setAutoSaveStatus('تم حفظ المسودة تلقائياً');}).catch(()=>setAutoSaveStatus('محفوظة على هذا الجهاز؛ تعذر الاتصال بالخادم'));
+      draftInFlight.current=draftInFlight.current.then(work);return draftInFlight.current;
+    };
+    const timer=setTimeout(flush,800);
+    const closing=()=>{fetch(`/api/admin/products/${draftId.current}/draft-state`,{method:'PUT',credentials:'same-origin',keepalive:true,headers:{'content-type':'application/json','x-csrf-token':csrfToken()},body:JSON.stringify({state:snapshot})}).catch(()=>{});};
+    window.addEventListener('pagehide',closing);
+    return()=>{clearTimeout(timer);window.removeEventListener('pagehide',closing);};
+  },[form,recoveryKey]);
   const [editorCategories, setEditorCategories] = useState(categories);
   const [addingCategory, setAddingCategory] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const [categoryBusy, setCategoryBusy] = useState(false);
+  const removeCategory=async category=>{
+    if(!window.confirm(`حذف فئة «${category.name}» نهائياً؟ يمكن حذف الفئة فقط إذا لم تكن مرتبطة بأي منتج.`))return;
+    setCategoryBusy(true);setError('');
+    try{
+      await api(`/api/admin/categories/${category.id}`,{method:'DELETE'});
+      setEditorCategories(current=>current.filter(item=>item.id!==category.id));
+      update('categorySlugs',form.categorySlugs.filter(slug=>slug!==category.slug));
+    }catch(failure){setError(failure.message);}finally{setCategoryBusy(false);}
+  };
   const createCategory = async () => {
     setCategoryBusy(true);setError('');
     try {
@@ -198,6 +254,11 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     setError("");
     try {
       const nextStatus = event.nativeEvent.submitter?.value === "draft" ? "draft" : form.status;
+      await draftInFlight.current;
+      if(!savedId.current){
+        await api(`/api/admin/products/${draftId.current}/draft-state`,{method:'PUT',body:JSON.stringify({state:form})});
+        savedId.current=draftId.current;
+      }
       const payload = {
         ...form,
         originalName: product?.name || form.displayName,
@@ -221,11 +282,15 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
           stockQuantity: variant.stockQuantity === "" || variant.stockQuantity == null ? null : Number(variant.stockQuantity),
         })),
       };
-      await api(product ? `/api/admin/products/${product.id}` : "/api/admin/products", {
-        method: product ? "PUT" : "POST",
+      const saved=await api(savedId.current ? `/api/admin/products/${savedId.current}` : "/api/admin/products", {
+        method: savedId.current ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
+      savedId.current=saved.id;
+      for(const image of pendingImages){await attachImage(saved.id,image);setPendingImages(current=>current.filter(item=>item.key!==image.key));}
       setDirty(false);
+      localStorage.removeItem(recoveryKey);
+      localStorage.removeItem(pendingImageKey);
       await onSaved();
     } catch (exception) {
       setError(exception.message);
@@ -237,10 +302,11 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
     <form className="owner-editor owner-product-editor" onSubmit={save}>
       <div className="owner-editor-head"><div><h2>{product ? "تعديل المنتج" : "منتج جديد"}</h2><p>إدارة بيانات المنتج وصوره ومخزونه في مكان واحد.</p></div><button type="button" className="quiet" onClick={cancel}>رجوع</button></div>
       {error && <div className="owner-error" role="alert">{error}</div>}
+      {form.status==='draft'&&<p role="status">{autoSaveStatus}</p>}
       <details className="owner-editor-section" open><summary><Package size={24} /><span><strong>المعلومات العامة</strong><small>الأسماء والأسعار والتصنيف والصور</small></span></summary><div className="owner-editor-section-body owner-general-layout"><div>
         <div className="owner-form-grid">
           <label className="owner-field-wide">اسم المنتج<input value={form.displayName} onChange={(event) => { update("displayName", event.target.value); if (!product && !form.slug) update("slug", safeSlug(event.target.value)); }} required /></label>
-          <fieldset className="owner-field-wide"><legend>فئة المنتج</legend><div className="check-row">{editorCategories.map(category=><label key={category.slug}><input type="checkbox" checked={form.categorySlugs.includes(category.slug)} onChange={event=>update('categorySlugs',event.target.checked?[...form.categorySlugs,category.slug]:form.categorySlugs.filter(value=>value!==category.slug))}/>{category.name}</label>)}</div><button type="button" className="quiet" onClick={()=>setAddingCategory(true)}>+ إضافة فئة جديدة</button>{addingCategory&&<div><label>اسم الفئة<input value={categoryName} maxLength={120} onChange={event=>setCategoryName(event.target.value)}/></label><button type="button" disabled={categoryBusy} onClick={createCategory}>حفظ الفئة</button><button type="button" onClick={()=>{setAddingCategory(false);setCategoryName('');}}>إلغاء</button></div>}</fieldset>
+          <fieldset className="owner-field-wide"><legend>فئة المنتج</legend><div className="check-row">{editorCategories.map(category=><span className="owner-category-chip" key={category.id}><label><input type="checkbox" checked={form.categorySlugs.includes(category.slug)} onChange={event=>update('categorySlugs',event.target.checked?[...form.categorySlugs,category.slug]:form.categorySlugs.filter(value=>value!==category.slug))}/><bdi>{category.name}</bdi></label>{!['women','kids','ملابس-رجالية'].includes(category.slug)&&<button type="button" disabled={categoryBusy} onClick={()=>removeCategory(category)} aria-label={`حذف فئة ${category.name}`} title={`حذف ${category.name}`}>×</button>}</span>)}</div><button type="button" className="quiet" onClick={()=>setAddingCategory(true)}>+ إضافة فئة جديدة</button>{addingCategory&&<div><label>اسم الفئة<input value={categoryName} maxLength={120} onChange={event=>setCategoryName(event.target.value)}/></label><button type="button" disabled={categoryBusy} onClick={createCategory}>حفظ الفئة</button><button type="button" onClick={()=>{setAddingCategory(false);setCategoryName('');}}>إلغاء</button></div>}</fieldset>
           <label>سعر البيع (MAD)<input type="number" min="0" step="0.01" value={form.priceMad} onChange={(event) => update("priceMad", event.target.value)} required /></label>
           <label>السعر قبل التخفيض (MAD)<input type="number" min="0" step="0.01" value={form.comparisonPriceMad ?? ""} onChange={(event) => update("comparisonPriceMad", event.target.value)} /></label>
           <label>شارة المنتج<input maxLength="40" value={form.badgeText} onChange={(event) => update("badgeText", event.target.value)} placeholder="مثلاً: جديد" /></label>
@@ -249,7 +315,8 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
         <label className="check"><input type="checkbox" checked={form.featured} onChange={(event) => update("featured", event.target.checked)} /> منتج مميز في الصفحة الرئيسية</label>
         <label>وصف مختصر<textarea className="owner-description-fixed" rows="4" maxLength="2000" value={form.shortDescription} onChange={(event) => update("shortDescription", event.target.value)} /></label>
         <label>الوصف الأصلي<textarea className="owner-description-fixed" rows="4" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>
-      </div><div className="owner-editor-images">{product ? <ImageManager product={product} onChanged={onImagesChanged} /> : <div className="owner-image-first-save"><Image size={42} /><strong>صور المنتج</strong><p>احفظ المنتج كمسودة أولاً، ثم أضف الصور من هذا القسم.</p></div>}</div></div></details>
+      </div><div className="owner-editor-images"><button type="button" className="owner-image-first-save" onClick={()=>setImagePickerOpen(true)}><Image size={42}/><strong>صور المنتج</strong><span>اختر من المكتبة أو ارفع من جهازك</span></button>{product ? <ImageManager product={product} onChanged={onImagesChanged} /> : <div className="owner-pending-images">{pendingImages.map((image,index)=><div key={image.key}><img src={image.preview} alt={image.label}/><small>{index===0?'الصورة الرئيسية':`الصورة ${index+1}`}</small><button type="button" className="quiet" disabled={index===0} onClick={()=>{setPendingImages(current=>swap(current,index,index-1));setDirty(true);}}>↑</button><button type="button" className="quiet" disabled={index===pendingImages.length-1} onClick={()=>{setPendingImages(current=>swap(current,index,index+1));setDirty(true);}}>↓</button><button type="button" className="quiet" onClick={()=>{setPendingImages(current=>current.filter(item=>item.key!==image.key));setDirty(true);}}>إزالة</button></div>)}</div>}</div></div></details>
+      {imagePickerOpen&&<ProductImagePicker api={api} onInsert={selectImages} onClose={()=>setImagePickerOpen(false)}/>}
       <details className="owner-editor-section"><summary><ListNumbers size={24} /><span><strong>الخيارات والمتغيرات</strong><small>المقاسات والألوان وتوفر كل توليفة</small></span></summary><div className="owner-editor-section-body">
         <OptionChips options={form.options} onChange={options => update('options', options)} onConfirm={() => update('variants', buildVariants(form.options, form.variants, form.priceMad, form.comparisonPriceMad))} />
         <p className="owner-editor-note">يُعاد استخدام معرّف التوليفة الموجودة عند بقاء خياراتها كما هي. المخزون غير المحدد لا يقبل طلبات.</p>
@@ -263,7 +330,7 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
             <td><input type="number" min="0" step="0.01" value={variant.priceMad} onChange={(event) => updateVariant(index, { priceMad: event.target.value })} aria-label={`سعر ${variant.name}`} disabled={variant.retired} /></td>
             <td><input type="number" min="0" step="0.01" value={variant.comparisonPriceMad ?? ""} onChange={(event) => updateVariant(index, { comparisonPriceMad: event.target.value })} aria-label={`السعر السابق ${variant.name}`} disabled={variant.retired} /></td>
             <td><input type="number" min="0" step="1" value={variant.stockQuantity ?? ""} onChange={(event) => updateVariant(index, { stockQuantity: event.target.value })} placeholder="غير محدد" aria-label={`مخزون ${variant.name}`} disabled={variant.retired} /></td>
-            <td><select value={variant.imageId || ""} onChange={(event) => updateVariant(index, { imageId: event.target.value || null })} aria-label={`صورة ${variant.name}`} disabled={variant.retired}><option value="">بلا صورة</option>{product?.images.map((image, imageIndex) => <option key={image.id} value={image.id}>الصورة {imageIndex + 1}{image.colorLabel ? ` — ${image.colorLabel}` : ""}</option>)}</select></td>
+            <td><VariantImageChoice images={product?.images||[]} preview={product?.images?.[0]?.localOptimizedPath||pendingImages[0]?.preview} value={variant.imageId} name={variant.name} disabled={variant.retired} onChange={imageId=>updateVariant(index,{imageId})}/></td>
             <td>{variant.retired ? <button type="button" className="quiet" disabled={!canRestore} title={canRestore ? "إعادة تنشيط كتوليفة غير متاحة" : "أعد قيم اللون والمقاس إلى الخيارات أولاً"} onClick={() => updateVariant(index, { retired: false, available: false })}>إعادة تنشيط</button> : <button type="button" className="danger" onClick={() => { if (window.confirm(`إحالة ${variant.name} إلى التقاعد؟ ستبقى الطلبات وحركات المخزون محفوظة.`)) updateVariant(index, { retired: true, available: false }); }}>إحالة للتقاعد</button>}</td>
           </tr>;
         })}</tbody></table></div>}
@@ -275,7 +342,7 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
         <div className="owner-seo-preview"><small>معاينة نتيجة البحث</small><strong>{form.seoTitle || form.displayName || "اسم المنتج"}</strong><span>{form.metaDescription || form.shortDescription || "وصف المنتج سيظهر هنا."}</span><code>/products/{form.slug || "product"}</code></div>
       </div></details>
       <details className="owner-editor-section"><summary><Package size={24} /><span><strong>الخيارات المتقدمة</strong><small>المرجع والتوفر والقياسات الاختيارية</small></span></summary><div className="owner-editor-section-body owner-form-grid">
-        <label>المرجع / SKU<input dir="ltr" value={form.sku} onChange={(event) => update("sku", event.target.value)} /></label>
+        <label>المرجع / SKU<input dir="ltr" aria-describedby="product-sku-help" value={form.sku} onChange={(event) => update("sku", event.target.value)} /><small id="product-sku-help">يُولّد تلقائياً ويمكنك تعديله بعد التوليد. استخدم مرجعاً فريداً للمنتج.</small></label>
         <label>التوفر<select value={form.availability} onChange={(event) => update("availability", event.target.value)}><option value="available">متوفر</option><option value="unavailable">غير متوفر</option></select></label>
         <label>الوزن (كغ)<input type="number" min="0" step="0.001" value={form.weightKg ?? ""} onChange={(event) => update("weightKg", event.target.value)} /></label>
         <label>العرض (سم)<input type="number" min="0" step="0.01" value={form.widthCm ?? ""} onChange={(event) => update("widthCm", event.target.value)} /></label>
@@ -286,6 +353,12 @@ function ProductEditor({ product, categories, onSaved, onCancel, onImagesChanged
       <div className="owner-save-bar"><button type="button" className="quiet" onClick={cancel}>إلغاء</button><span className="owner-save-spacer" /><label>الحالة<select value={form.status} onChange={(event) => update("status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="hidden">مخفي</option>{product?.status === "archived" && <option value="archived">مؤرشف</option>}</select></label><button type="submit" name="saveAction" value="draft" className="quiet" disabled={busy}>{busy ? "جارٍ الحفظ…" : "حفظ كمسودة"}</button><button type="submit" name="saveAction" value="selected" disabled={busy}>{busy ? "جارٍ الحفظ…" : form.status === "published" ? "نشر المنتج" : "حفظ المنتج"}</button></div>
     </form>
   );
+}
+
+function VariantImageChoice({images,preview,value,name,disabled,onChange}){
+  const choice=images.find(image=>image.id===value);
+  const choose=(event,id)=>{onChange(id);event.currentTarget.closest('details')?.removeAttribute('open');};
+  return <details className="owner-variant-image-picker"><summary aria-label={`اختيار صورة ${name}`}>{choice||preview?<img src={choice?.localOptimizedPath||preview} alt={choice?.altText||name}/>:<Image size={28} aria-hidden="true"/>}<span>{choice?'تغيير الصورة':'اختيار صورة'}</span></summary><div className="owner-variant-image-choices">{images.map((image,index)=><button type="button" key={image.id} disabled={disabled} aria-label={`الصورة ${index+1} — ${name}`} aria-pressed={value===image.id} onClick={event=>choose(event,image.id)}><img src={image.localOptimizedPath} alt={image.altText||`الصورة ${index+1}`}/></button>)}<button type="button" className="quiet" disabled={disabled} onClick={event=>choose(event,null)}>بلا صورة</button>{!images.length&&<small>أضف صور المنتج واحفظه أولاً.</small>}</div></details>;
 }
 
 function ImageManager({ product, onChanged }) {
@@ -346,10 +419,8 @@ function ImageManager({ product, onChanged }) {
   };
   return (
     <div className="image-manager">
-      <h3>الصور وترتيبها</h3>
       {colorOption && <p>صور الألوان المرتبطة بالتوليفات تُحدَّد من جدول التوليفات. اربط صور المعرض الإضافية بلونها هنا.</p>}
       {error && <div className="owner-error" role="alert">{error}</div>}
-      <label className="owner-image-drop" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); upload(event.dataTransfer.files); }}><UploadSimple size={30} /><strong>اسحب الصور هنا أو اختر ملفات</strong><small>PNG أو JPG أو WebP، حتى 10 MB لكل صورة</small><input type="file" multiple accept="image/png,image/webp,image/jpeg" onChange={(event) => { upload(event.target.files); event.target.value = ""; }} disabled={busy} /></label>
       <div className="image-list">{product.images.map((image, index) => {
         const linkedColors = [...new Set(product.variants.filter((variant) => variant.imageId === image.id).map((variant) => colorOfVariant(variant, colorOption)).filter(Boolean))];
         return <article key={image.id}><a href={image.localOriginalPath || image.localOptimizedPath} target="_blank" rel="noreferrer" aria-label={`معاينة الصورة ${index + 1}`}><img src={image.localOptimizedPath} alt={image.altText || product.displayName} /></a>{index === 0 && <small>الصورة الرئيسية</small>}{colorOption && <label className="image-color-field">لون الصورة<select value={linkedColors[0] || image.colorLabel || ""} onChange={(event) => assignColor(image.id, event.target.value)} disabled={busy || linkedColors.length > 0} aria-label={`لون الصورة ${index + 1}`}><option value="">غير محدد</option>{colorOption.values.map((value) => <option key={value.id} value={value.label}>{value.label}</option>)}</select>{linkedColors.length > 0 && <small>مرتبط بالتوليفات</small>}</label>}<MoveButtons index={index} count={product.images.length} label={`الصورة ${index + 1}`} onMove={move} />{index > 0 && <button type="button" className="quiet" onClick={() => makeMain(image.id)} disabled={busy}>تعيين رئيسية</button>}<label className="upload-button"><UploadSimple /> استبدال<input type="file" accept="image/png,image/webp,image/jpeg" onChange={(event) => { upload(event.target.files, image.id); event.target.value = ""; }} disabled={busy} /></label><button type="button" className="danger" onClick={() => remove(image.id)} disabled={busy}>أرشفة الصورة</button></article>;
@@ -358,7 +429,7 @@ function ImageManager({ product, onChanged }) {
   );
 }
 
-function ProductsPanel({ data, reload, startNew = false, onDirtyChange, onDone }) {
+function ProductsPanel({ data, reload, goTo, startNew = false, onDirtyChange, onDone }) {
   const [editingId, setEditingId] = useState(startNew ? "new" : null);
   const [query, setQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -368,7 +439,7 @@ function ProductsPanel({ data, reload, startNew = false, onDirtyChange, onDone }
   const [actionError, setActionError] = useState("");
   const editing = editingId === "new" ? "new" : data.products.find((product) => product.id === editingId);
   const stats = deriveProductStats(data.products, data.publicProducts);
-  const shownProducts = useMemo(() => filterOwnerProducts(data.products, query, filterStatus).filter((product) => filterCategory === "all" || product.categories.some((category) => category.slug === filterCategory)), [data.products, query, filterStatus, filterCategory]);
+  const shownProducts = useMemo(() => filterOwnerProducts(data.products, query, filterStatus).filter((product) => filterCategory === "all" || product.categories.some((category) => category.slug === filterCategory)).sort((a,b)=>(Date.parse(b.catalogCreatedAt)||0)-(Date.parse(a.catalogCreatedAt)||0)||b.id.localeCompare(a.id)), [data.products, query, filterStatus, filterCategory]);
   const pageCount = Math.max(1, Math.ceil(shownProducts.length / 12));
   const pageProducts = shownProducts.slice((Math.min(page, pageCount) - 1) * 12, Math.min(page, pageCount) * 12);
   const statusLabels = { draft: "مسودة", published: "منشور", hidden: "مخفي", archived: "مؤرشف" };
@@ -402,9 +473,9 @@ function ProductsPanel({ data, reload, startNew = false, onDirtyChange, onDone }
       <div className="panel-title owner-products-header"><div><h1>المنتجات</h1><p>إدارة المنتجات والأسعار والصور والتوفر في متجرك.</p></div>{!editing && <button type="button" onClick={() => { setEditingId("new"); setMessage(""); }}><Plus size={20} weight="bold" /> منتج جديد</button>}</div>
       {actionError && <div className="owner-error" role="alert">{actionError}</div>}
       {message && <div className="owner-success" role="status">{message}</div>}
-      {!editing && <><div className="owner-stats-grid" aria-label="ملخص المنتجات">{cards.map(({ key, label, detail, Icon }) => <article className={`owner-stat-card owner-stat-${key}`} key={key}><span className="owner-stat-icon"><Icon size={25} weight="duotone" aria-hidden="true" /></span><div><span className="owner-stat-value">{stats[key] ?? "—"}</span><h2>{label}</h2><p>{detail}</p></div></article>)}</div><p className="owner-stats-note">الإجمالي يشمل المؤرشف. الظاهر هو ما تعيده واجهة المتجر العامة؛ المنتج المنشور قد يظهر حتى إن نفد مخزونه. المسودات والمخفية والمؤرشفة لا تظهر للعملاء.</p></>}
+      {!editing && <><div className="owner-stats-grid" aria-label="ملخص المنتجات">{cards.map(({ key, label, detail, Icon }) => <article className={`owner-stat-card owner-stat-${key}`} key={key} role={["draft","variable"].includes(key) ? "button" : undefined} tabIndex={["draft","variable"].includes(key) ? 0 : undefined} aria-pressed={key === "draft" ? filterStatus === key : undefined} onClick={["draft","variable"].includes(key) ? () => {if(key === "variable"){goTo("ordering");return;}setFilterStatus(key);setFilterCategory("all");setQuery("");setPage(1);} : undefined} onKeyDown={["draft","variable"].includes(key) ? event => {if(event.key === "Enter" || event.key === " "){event.preventDefault();if(key === "variable"){goTo("ordering");return;}setFilterStatus(key);setFilterCategory("all");setQuery("");setPage(1);}} : undefined}><span className="owner-stat-icon"><Icon size={25} weight="duotone" aria-hidden="true" /></span><div><span className="owner-stat-value">{stats[key] ?? "—"}</span><h2>{label}</h2><p>{detail}</p></div></article>)}</div><p className="owner-stats-note">الإجمالي يشمل المؤرشف. الظاهر هو ما تعيده واجهة المتجر العامة؛ المنتج المنشور قد يظهر حتى إن نفد مخزونه. المسودات والمخفية والمؤرشفة لا تظهر للعملاء.</p></>}
       {editing && <ProductEditor key={editing === "new" ? "new" : editing.id} product={editing === "new" ? null : editing} categories={data.categories} onCancel={() => { setEditingId(null); onDone?.(); }} onImagesChanged={reload} onDirtyChange={onDirtyChange} onSaved={async () => { setEditingId(null); await reload(); setMessage("تم حفظ المنتج بنجاح."); onDone?.(); }} />}
-      {!editing && <><div className="owner-product-toolbar"><label className="owner-product-search"><span>البحث في المنتجات</span><span className="owner-search-field"><MagnifyingGlass size={19} aria-hidden="true" /><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="الاسم أو SKU أو الرابط" /></span></label><label className="owner-product-filter">الحالة<select value={filterStatus} onChange={(event) => { setFilterStatus(event.target.value); setPage(1); }}><option value="all">كل الحالات</option><option value="draft">مسودة</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select></label><label className="owner-product-filter">التصنيف<select value={filterCategory} onChange={(event) => { setFilterCategory(event.target.value); setPage(1); }}><option value="all">كل التصنيفات</option>{data.categories.map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}</select></label><span className="owner-product-count" role="status">عرض {shownProducts.length} من {data.products.length}</span></div>
+      {!editing && <><div className="owner-product-toolbar"><label className="owner-product-search"><span>البحث في المنتجات</span><span className="owner-search-field"><MagnifyingGlass size={19} aria-hidden="true" /><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="الاسم أو SKU أو الرابط" /></span></label><label className="owner-product-filter">الحالة<select value={filterStatus} onChange={(event) => { setFilterStatus(event.target.value); setPage(1); }}><option value="all">كل الحالات</option><option value="variable">متعددة الخيارات</option><option value="draft">مسودة</option><option value="published">منشور</option><option value="hidden">مخفي</option><option value="archived">مؤرشف</option></select></label><label className="owner-product-filter">التصنيف<select value={filterCategory} onChange={(event) => { setFilterCategory(event.target.value); setPage(1); }}><option value="all">كل التصنيفات</option>{data.categories.map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}</select></label><span className="owner-product-count" role="status">عرض {shownProducts.length} من {data.products.length}</span></div>
       <div className="admin-list owner-products-list">{pageProducts.map((product) => <article key={product.id}>{product.images[0]?.localOptimizedPath ? <img src={product.images[0].localOptimizedPath} alt="" /> : <span className="owner-product-image-empty"><Package size={26} aria-hidden="true" /></span>}<div className="owner-product-copy"><strong>{product.displayName}</strong><small>{money(product.price.current)} · {product.sku || "بلا SKU"} · {product.variants.length} توليفة · {product.categories.map((category) => category.name).join("، ")}</small></div><span className={`status-pill ${product.status}`}>{statusLabels[product.status] || product.status}</span><button type="button" className="quiet" onClick={() => { setEditingId(product.id); setMessage(""); }}>تعديل</button>{product.status === "archived" ? <button type="button" className="quiet" onClick={() => restore(product)}>استعادة</button> : <button type="button" className="danger" onClick={() => archive(product)}><Archive /> أرشفة</button>}</article>)}</div>
       {!shownProducts.length && <p className="owner-products-empty">لا توجد منتجات مطابقة. جرّب تغيير البحث أو الفلاتر.</p>}
       {pageCount > 1 && <nav className="owner-pagination" aria-label="صفحات المنتجات"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>السابق</button><span>الصفحة {Math.min(page, pageCount)} من {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => setPage(page + 1)}>التالي</button></nav>}</>}
@@ -499,12 +570,12 @@ function BannersPanel({ data, reload }) {
 }
 
 
-const ownerIcons = { House, ChartBar, ShoppingBag, Users, CreditCard, FileText, Package, Plus, Tag, Warehouse, Factory, ListNumbers, Image };
+const ownerIcons = { Storefront, Swatches, Images, Files, ListBullets, Palette, Article, Megaphone, House, ChartBar, ShoppingBag, Users, CreditCard, FileText, Package, Plus, Tag, Warehouse, Factory, ListNumbers, Image };
 
 function OwnerNavButton({ item, active, onNavigate, sub = false }) {
   const Icon = ownerIcons[item.icon];
   if (item.planned) return <button type="button" className="owner-nav-planned owner-subitem" disabled title={`${item.label} — غير متاح حالياً`} aria-label={`${item.label} — غير متاح حالياً`}><Icon size={20} aria-hidden="true" /><span className="owner-nav-label">{item.label} <small>قريباً</small></span></button>;
-  return <button type="button" className={`${active ? "active" : ""}${sub ? " owner-subitem" : ""}`} onClick={() => onNavigate(item.id)} aria-label={item.label} aria-current={active ? "page" : undefined} title={item.label} data-tooltip={item.label}><Icon size={22} aria-hidden="true" /><span className="owner-nav-label">{item.label}</span></button>;
+  return <button type="button" className={`${active ? "active" : ""}${sub ? " owner-subitem" : ""}`} onClick={() => onNavigate(item.id)} aria-label={item.label} aria-current={active ? "page" : undefined} title={item.label} data-tooltip={item.label}>{item.marketingModule?<MarketingIcon module={item.marketingModule} compact/>:<Icon size={22} aria-hidden="true" />}<span className="owner-nav-label">{item.label}</span></button>;
 }
 
 function OwnerNavSection({ section, tab, expanded, onToggle, onNavigate }) {
@@ -520,7 +591,7 @@ export function AdminApp() {
   const [session, setSession] = useState(undefined);
   const [tab, setTab] = useState(() => ownerTabFromPath(window.location.pathname));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarPreference());
-  const [openSections, setOpenSections] = useState(() => ({ orders: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) === "orders", products: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) !== "orders" }));
+  const [openSections, setOpenSections] = useState(() => ({ store: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) === "store", marketing: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) === "marketing", orders: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) === "orders", products: ownerSectionForTab(ownerTabFromPath(window.location.pathname)) !== "orders" }));
   const [editorDirty, setEditorDirty] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef(null);
@@ -528,9 +599,9 @@ export function AdminApp() {
   const mobileWasOpen = useRef(false);
   const [data, setData] = useState({ products: [], publicProducts: [], categories: [], banners: [], orders: [], orderSummary: null });
   const [error, setError] = useState("");
-  const load = async () => {
+  const load = async (role=session?.role) => {
     try {
-      const [products, storefront, banners, orders] = await Promise.all([api("/api/admin/products"), api("/api/public/storefront", { cache: "no-store" }), api("/api/admin/banners"), api("/api/admin/orders")]);
+      const [products, storefront, banners, orders] = await Promise.all([api("/api/admin/products"), api("/api/public/storefront", { cache: "no-store" }), ["super_admin","products_marketing"].includes(role)?api("/api/admin/banners"):Promise.resolve({banners:[]}), role!=="products_marketing"?api("/api/admin/orders"):Promise.resolve({orders:[],summary:null})]);
       setData({ products: products.products, publicProducts: storefront.products, categories: storefront.categories, banners: banners.banners, orders: orders.orders, orderSummary: orders.summary });
       setError("");
     } catch (exception) {
@@ -539,17 +610,19 @@ export function AdminApp() {
   };
   const authenticate = async () => {
     try {
-      setSession(await api("/api/admin/session"));
-      await load();
-    } catch {
-      setSession(null);
-    }
+      const current=await api("/api/admin/session");
+      setSession(current);
+      const destination=ownerLandingTab(current.role,window.location.pathname);
+      if(destination!==ownerTabFromPath(window.location.pathname)){window.history.replaceState({},'',ownerPathForTab(destination));setTab(destination);}
+      await load(current.role);
+    } catch {setSession(null);}
   };
   useEffect(() => { authenticate(); }, []);
   useEffect(() => { saveSidebarPreference(undefined, sidebarCollapsed); }, [sidebarCollapsed]);
   useEffect(() => {
     const onPopState = () => {
-      const nextTab = ownerTabFromPath(window.location.pathname);
+      let nextTab = ownerTabFromPath(window.location.pathname);
+      if(session && !canAccessOwnerTab(session.role,nextTab))nextTab=session.role==='products_marketing'?'products':'orders';
       setTab(nextTab);
       const section = ownerSectionForTab(nextTab);
       if (section) setOpenSections((current) => ({ ...current, [section]: true }));
@@ -571,6 +644,7 @@ export function AdminApp() {
   if (!session) return <Login onLogin={authenticate} />;
   const labels = Object.fromEntries(ownerNavigation.flatMap((group) => [...(group.items || []), ...(group.sections || []).flatMap((section) => section.children)]).map((item) => [item.id, item.label]));
   const goTo = (id) => {
+    if(!canAccessOwnerTab(session.role,id))return;
     if (editorDirty && id !== tab && !window.confirm("هناك تغييرات غير محفوظة في المنتج. هل تريد المغادرة؟")) return;
     const path = ownerPathForTab(id);
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
@@ -585,10 +659,10 @@ export function AdminApp() {
       <header className="owner-mobile-bar" inert={mobileOpen ? true : undefined}><button ref={mobileMenuRef} type="button" onClick={() => setMobileOpen((value) => !value)} aria-label={mobileOpen ? "إغلاق قائمة لوحة المالك" : "فتح قائمة لوحة المالك"} aria-controls="owner-sidebar" aria-expanded={mobileOpen}><List size={25} /></button><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><span>{labels[tab]}</span></header>
       {mobileOpen && <button type="button" className="owner-mobile-backdrop" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة" />}
       <aside id="owner-sidebar" className="owner-sidebar"><div className="owner-sidebar-head"><img src="/images/brand/melyne-logo.png" alt="MELYNE" /><button type="button" className="owner-sidebar-toggle" onClick={() => setSidebarCollapsed((value) => !value)} aria-label={sidebarCollapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"} aria-controls="owner-sidebar" aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? "توسيع القائمة" : "طي القائمة"}><List size={22} /></button><button ref={mobileCloseRef} type="button" className="owner-mobile-close" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة"><X size={22} /></button></div><p className="owner-name">{session.displayName}</p><nav aria-label="أقسام لوحة المالك">
-        {ownerNavigation.map((group) => <div className="owner-nav-group-block" key={group.heading}><span className="owner-nav-group">{group.heading}</span>{group.items?.map((item) => <OwnerNavButton key={item.id} item={item} active={tab === item.id} onNavigate={goTo} />)}{group.sections?.map((section) => <OwnerNavSection key={section.id} section={section} tab={tab} expanded={Boolean(openSections[section.id])} onToggle={toggleSection} onNavigate={goTo} />)}</div>)}
+        {ownerNavigation.map(group=>({...group,items:group.items?.filter(item=>canAccessOwnerTab(session.role,item.id)),sections:group.sections?.filter(section=>canAccessOwnerTab(session.role,section.id))})).filter(group=>group.items?.length||group.sections?.length).map((group) => <div className="owner-nav-group-block" key={group.heading}><span className="owner-nav-group">{group.heading}</span>{group.items?.map((item) => <OwnerNavButton key={item.id} item={item} active={tab === item.id} onNavigate={goTo} />)}{group.sections?.map((section) => <OwnerNavSection key={section.id} section={section} tab={tab} expanded={Boolean(openSections[section.id])} onToggle={toggleSection} onNavigate={goTo} />)}</div>)}
         <a href="/" target="_blank" rel="noreferrer" aria-label="عرض المتجر" title="عرض المتجر" data-tooltip="عرض المتجر"><Storefront size={22} aria-hidden="true" /><span className="owner-nav-label">عرض المتجر</span></a><button type="button" disabled title="إعدادات المتجر تحتاج تطويراً لاحقاً"><GearSix size={22} aria-hidden="true" /><span className="owner-nav-label">إعدادات المتجر</span></button>
       </nav><button type="button" className="logout" onClick={async () => { if (editorDirty && !window.confirm("هناك تغييرات غير محفوظة. هل تريد تسجيل الخروج؟")) return; await api("/api/admin/session", { method: "DELETE" }); setSession(null); }} aria-label="خروج" title="خروج" data-tooltip="خروج"><SignOut size={22} aria-hidden="true" /><span className="owner-nav-label">خروج</span></button></aside>
-      <main className={tab === "orders" ? "owner-orders-main" : undefined} inert={mobileOpen ? true : undefined}>{error && <div className="owner-error" role="alert">{error}</div>}{tab === "dashboard" && <DashboardPanel data={data} goTo={goTo} />}{tab === "analytics" && <AnalyticsPanel data={data} />}{["products", "add-product"].includes(tab) && <ProductsPanel key={tab} data={data} reload={load} startNew={tab === "add-product"} onDirtyChange={setEditorDirty} onDone={tab === "add-product" ? () => { setEditorDirty(false); window.history.pushState({}, "", ownerPathForTab("products")); setTab("products"); } : undefined} />}{tab === "collections" && <CollectionsPanel data={data} />}{tab === "stock" && <StockPanel data={data} />}{["brands", "suppliers"].includes(tab) && <MetadataPanel data={data} kind={tab} />}{tab === "ordering" && <OrderingPanel data={data} reload={load} />}{tab === "banners" && <BannersPanel data={data} reload={load} />}{tab === "orders" && <OrdersPanel data={data} reload={load} goTo={goTo} api={api} />}{tab === "new-order" && <NewOrderPanel data={data} reload={load} goTo={goTo} api={api} />}</main>
+      <main className={tab === "orders" ? "owner-orders-main" : undefined} inert={mobileOpen ? true : undefined}>{!canAccessOwnerTab(session.role,tab) && <p role="alert">Access restricted</p>}{error && <div className="owner-error" role="alert">{error}</div>}{["analytics","team-analytics"].includes(tab)&&session.role==="super_admin"&&<AnalyticsNavigation goTo={goTo} active={tab}/>} {tab === "team-analytics" && session.role === "super_admin" && <TeamPerformance api={api}/>} {(tab === "store" || tab.startsWith("store-")) && <StorePanel tab={tab} goTo={goTo} api={api} />}{(tab === "marketing" || tab.startsWith("marketing-")) && <MarketingPanel tab={tab} goTo={goTo} api={api} products={data.products} />}{tab === "team" && session.role === "super_admin" && <TeamPanel api={api} />}{tab === "dashboard" && <DashboardPanel data={data} goTo={goTo} />}{tab === "analytics" && <AnalyticsPanel data={data} />}{["products", "add-product"].includes(tab) && <ProductsPanel key={tab} data={data} reload={load} goTo={goTo} startNew={tab === "add-product"} onDirtyChange={setEditorDirty} onDone={tab === "add-product" ? () => { setEditorDirty(false); window.history.pushState({}, "", ownerPathForTab("products")); setTab("products"); } : undefined} />}{tab === "collections" && <CollectionsPanel data={data} />}{tab === "stock" && <StockPanel data={data} />}{["brands", "suppliers"].includes(tab) && <MetadataPanel data={data} kind={tab} />}{tab === "ordering" && <OrderingPanel data={data} reload={load} />}{tab === "banners" && <BannersPanel data={data} reload={load} />}{tab === "orders" && <TeamRoleContext.Provider value={session.role}>{session.role==='confirmation'?<ConfirmationWorkspace data={data} api={api} reload={load}/>:<OrdersPanel data={data} reload={load} goTo={goTo} api={api} />}</TeamRoleContext.Provider>}{tab === "new-order" && <NewOrderPanel data={data} reload={load} goTo={goTo} api={api} />}</main>
     </div>
   );
 }

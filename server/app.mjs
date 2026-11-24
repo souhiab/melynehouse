@@ -1,4 +1,8 @@
+import {confirmationOutcomes} from '../shared/confirmation-outcomes.js';
+import {installPublicMarketing,installAdminMarketing} from './marketing.mjs';
+import { allowedAdminRequest, installTeamRoutes } from './team.mjs';
 import crypto from "node:crypto";
+import {productSku} from './product-sku.mjs';
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -73,7 +77,7 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
   const storage=multer.diskStorage({destination(req,file,callback){ const date=new Date(); const relative=path.join(String(date.getUTCFullYear()),String(date.getUTCMonth()+1).padStart(2,"0")); const target=path.join(config.uploadRoot,relative); fs.mkdirSync(target,{recursive:true}); req.uploadRelativeDirectory=relative; callback(null,target); },filename(req,file,callback){ callback(null,`${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${cleanFilename(file.originalname)}`); }});
   const upload=multer({storage,limits:{fileSize:10*1024*1024,files:1}});
 
-  const authenticate=asyncRoute(async(req,res,next)=>{ const token=req.cookies[SESSION_COOKIE]; if(!token) return res.status(401).json({error:"Authentication required"}); const result=await db.query(`SELECT s.*,u.email,u.display_name FROM admin_sessions s JOIN admin_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.disabled_at IS NULL`,[tokenHash(token,config.sessionSecret)]); if(!result.rowCount) return res.status(401).json({error:"Session expired"}); req.admin=result.rows[0]; next(); });
+  const authenticate=asyncRoute(async(req,res,next)=>{ const token=req.cookies[SESSION_COOKIE]; if(!token) return res.status(401).json({error:"Authentication required"}); const result=await db.query(`SELECT s.*,u.email,u.display_name,u.role FROM admin_sessions s JOIN admin_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.disabled_at IS NULL`,[tokenHash(token,config.sessionSecret)]); if(!result.rowCount) return res.status(401).json({error:"Session expired"}); req.admin=result.rows[0]; next(); });
   const csrf=(req,res,next)=>{ if(["GET","HEAD","OPTIONS"].includes(req.method)) return next(); const value=req.get("x-csrf-token"); const cookie=req.cookies[CSRF_COOKIE]; if(!value||!cookie||value!==cookie||tokenHash(value,config.sessionSecret)!==req.admin.csrf_hash) return res.status(403).json({error:"CSRF validation failed"}); next(); };
 
   app.get("/api/health",asyncRoute(async(req,res)=>{ await db.query("SELECT 1"); res.json({status:"ok",database:"postgresql"}); }));
@@ -89,13 +93,79 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
     return res.status(201).json(order);
   }));
 
+  installPublicMarketing(app,db,asyncRoute);
   const loginLimiter=rateLimit({windowMs:15*60_000,limit:8,standardHeaders:"draft-8",legacyHeaders:false});
-  app.post("/api/admin/session",loginLimiter,asyncRoute(async(req,res)=>{ const input=parse(loginSchema,req.body); const result=await db.query("SELECT * FROM admin_users WHERE lower(email)=lower($1) AND disabled_at IS NULL",[input.email]); if(!result.rowCount||!(await verifyPassword(input.password,result.rows[0].password_hash))) return res.status(401).json({error:"Invalid email or password"}); const token=randomToken(); const csrfToken=randomToken(); const expires=new Date(Date.now()+SESSION_AGE); await db.query("INSERT INTO admin_sessions(token_hash,user_id,csrf_hash,expires_at) VALUES($1,$2,$3,$4)",[tokenHash(token,config.sessionSecret),result.rows[0].id,tokenHash(csrfToken,config.sessionSecret),expires]); await audit(db,result.rows[0].id,"login","admin_session",null,{requestId:req.requestId}); res.cookie(SESSION_COOKIE,token,cookieOptions(config,SESSION_AGE)); res.cookie(CSRF_COOKIE,csrfToken,{httpOnly:false,sameSite:"strict",secure:config.production,path:"/",maxAge:SESSION_AGE}); res.json({email:result.rows[0].email,displayName:result.rows[0].display_name}); }));
-  app.get("/api/admin/session",authenticate,(req,res)=>res.json({email:req.admin.email,displayName:req.admin.display_name}));
+  app.post("/api/admin/session",loginLimiter,asyncRoute(async(req,res)=>{ const input=parse(loginSchema,req.body); const result=await db.query("SELECT * FROM admin_users WHERE lower(email)=lower($1) AND disabled_at IS NULL",[input.email]); if(!result.rowCount||!(await verifyPassword(input.password,result.rows[0].password_hash))) return res.status(401).json({error:"Invalid email or password"}); const token=randomToken(); const csrfToken=randomToken(); const expires=new Date(Date.now()+SESSION_AGE); await db.query("INSERT INTO admin_sessions(token_hash,user_id,csrf_hash,expires_at) VALUES($1,$2,$3,$4)",[tokenHash(token,config.sessionSecret),result.rows[0].id,tokenHash(csrfToken,config.sessionSecret),expires]); await audit(db,result.rows[0].id,"login","admin_session",null,{requestId:req.requestId}); res.cookie(SESSION_COOKIE,token,cookieOptions(config,SESSION_AGE)); res.cookie(CSRF_COOKIE,csrfToken,{httpOnly:false,sameSite:"strict",secure:config.production,path:"/",maxAge:SESSION_AGE}); res.json({email:result.rows[0].email,displayName:result.rows[0].display_name,role:result.rows[0].role}); }));
+  app.get("/api/admin/session",authenticate,(req,res)=>res.json({email:req.admin.email,displayName:req.admin.display_name,role:req.admin.role}));
   app.delete("/api/admin/session",authenticate,csrf,asyncRoute(async(req,res)=>{ await audit(db,req.admin.user_id,"logout","admin_session",null,{requestId:req.requestId}); await db.query("DELETE FROM admin_sessions WHERE token_hash=$1",[req.admin.token_hash]); res.clearCookie(SESSION_COOKIE); res.clearCookie(CSRF_COOKIE); res.status(204).end(); }));
 
   app.use("/api/admin",authenticate,csrf,(req,res,next)=>{ res.setHeader("cache-control","no-store"); next(); });
+  app.use('/api/admin',(req,res,next)=>allowedAdminRequest(req.admin.role,req.method,req.path,req.body)?next():res.status(403).json({error:'You do not have permission for this operation'}));
+  installTeamRoutes(app,db,asyncRoute,audit);
+  installAdminMarketing(app,db,asyncRoute,audit);
   app.get("/api/admin/products",asyncRoute(async(req,res)=>res.json({products:await loadProducts(db,{includeUnpublished:true})})));
+  app.get('/api/admin/dashboard',asyncRoute(async(req,res)=>{
+    const totals=(await db.query("SELECT COUNT(*)::int orders,COALESCE(SUM(CASE WHEN status<>'cancelled' THEN total_mad ELSE 0 END),0) value FROM orders WHERE created_at>=now()-INTERVAL '24 hours'")).rows[0];
+    const hourly=(await db.query("SELECT date_trunc('hour',created_at) AS hour_bucket,COALESCE(SUM(CASE WHEN status<>'cancelled' THEN total_mad ELSE 0 END),0) value FROM orders WHERE created_at>=now()-INTERVAL '24 hours' GROUP BY 1 ORDER BY 1")).rows;
+    const statuses=(await db.query('SELECT status,COUNT(*)::int count FROM orders GROUP BY status')).rows;
+    res.json({asOf:new Date().toISOString(),orders24h:totals.orders,orderValue24h:Number(totals.value),hourly:hourly.map(row=>({hour:row.hour_bucket,value:Number(row.value)})),statuses,visitors:null,conversionRate:null});
+  }));
+  app.get('/api/admin/analytics',asyncRoute(async(req,res)=>{
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Casablanca',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const from=String(req.query.from||today),to=String(req.query.to||today);
+    const valid=value=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
+    if(!valid(from)||!valid(to)||from>to||(Date.parse(to)-Date.parse(from))/86400000>365)throw Object.assign(new Error('اختر فترة صالحة لا تتجاوز سنة'),{status:400});
+    const condition="o.created_at >= ($1::date AT TIME ZONE 'Africa/Casablanca') AND o.created_at < (($2::date+INTERVAL '1 day') AT TIME ZONE 'Africa/Casablanca')";
+    const params=[from,to];
+    const summary=(await db.query(`SELECT count(*)::int orders,COALESCE(SUM(CASE WHEN o.status<>'cancelled' THEN o.total_mad ELSE 0 END),0) value FROM orders o WHERE ${condition}`,params)).rows[0];
+    const timeline=(await db.query(`SELECT to_char(o.created_at AT TIME ZONE 'Africa/Casablanca',$3) bucket,count(*)::int count FROM orders o WHERE ${condition} GROUP BY 1 ORDER BY 1`,[...params,from===to?'HH24':'YYYY-MM-DD'])).rows;
+    const statuses=(await db.query(`SELECT o.status,count(*)::int count FROM orders o WHERE ${condition} GROUP BY o.status ORDER BY o.status`,params)).rows;
+    const products=(await db.query(`SELECT COALESCE(oi.product_snapshot->>'originalName',oi.product_snapshot->>'displayName','غير معروف') name,COUNT(DISTINCT o.id)::int orders,SUM(oi.quantity)::int quantity FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE ${condition} GROUP BY oi.product_id,oi.product_snapshot->>'originalName',oi.product_snapshot->>'displayName' ORDER BY orders DESC,name LIMIT 30`,params)).rows;
+    const employees=(await db.query("SELECT COALESCE(u.display_name,'مستخدم سابق') name,count(*)::int changes FROM admin_audit_log a LEFT JOIN admin_users u ON u.id=a.admin_user_id WHERE a.action='status_change' AND a.entity_type='order' AND a.created_at>=($1::date AT TIME ZONE 'Africa/Casablanca') AND a.created_at<(($2::date+INTERVAL '1 day') AT TIME ZONE 'Africa/Casablanca') GROUP BY u.id,u.display_name ORDER BY changes DESC",params)).rows;
+    res.json({from,to,orders:summary.orders,orderValueMad:Number(summary.value),visitors:null,conversionRate:null,coupons:null,timeline,statuses,products,employees});
+  }));
+  app.put('/api/admin/products/:id/draft-state',asyncRoute(async(req,res)=>{
+    const id=req.params.id;
+    if(!/^[a-zA-Z0-9-]{1,200}$/.test(id)||!req.body.state||typeof req.body.state!=='object'||Array.isArray(req.body.state))throw Object.assign(new Error('Invalid draft'),{status:400});
+    const allowed=['sku','slug','displayName','description','shortDescription','badgeText','badgeColor','seoTitle','metaDescription','weightKg','widthCm','heightCm','depthCm','priceMad','comparisonPriceMad','availability','categorySlugs','options','variants','featured'];
+    const state=Object.fromEntries(allowed.filter(key=>Object.hasOwn(req.body.state,key)).map(key=>[key,req.body.state[key]]));
+    state.status='draft';
+    await transaction(db,async client=>{
+      const row=(await client.query('SELECT status,sku FROM products WHERE id=$1 FOR UPDATE',[id])).rows[0];
+      if(row&&row.status!=='draft')throw Object.assign(new Error('Only drafts can autosave'),{status:409});
+      state.sku=await productSku(client,state.sku,row?.sku);
+      if(!row){
+        const name=typeof state.displayName==='string'&&state.displayName.trim()?state.displayName.trim().slice(0,500):'مسودة جديدة';
+        await client.query("INSERT INTO products(id,sku,slug,original_name,display_name,price_mad,status) VALUES($1,$2,$3,$4,$4,0,'draft') ON CONFLICT(id) DO NOTHING",[id,state.sku,`draft-${id}`,name]);
+      }
+      await client.query("UPDATE products SET source_metadata=jsonb_set(source_metadata,'{draftEditorRecovery}',$1::jsonb),updated_at=now() WHERE id=$2 AND status='draft'",[JSON.stringify(state),id]);
+      await client.query("UPDATE products SET sku=$1 WHERE id=$2 AND status='draft'",[state.sku,id]);
+      if(typeof state.displayName==='string'&&state.displayName.trim())await client.query("UPDATE products SET display_name=$1 WHERE id=$2 AND status='draft'",[state.displayName.trim().slice(0,500),id]);
+    });
+    const saved=(await db.query('SELECT sku FROM products WHERE id=$1',[id])).rows[0];
+    res.json({id,saved:true,sku:saved.sku});
+  }));
+  app.get('/api/admin/image-library',asyncRoute(async(req,res)=>{
+    const images=(await db.query('SELECT pi.id,pi.public_url,pi.alt_text,p.display_name FROM product_images pi JOIN products p ON p.id=pi.product_id WHERE pi.archived_at IS NULL ORDER BY pi.created_at DESC')).rows;
+    const assets=(await db.query('SELECT id,public_url,original_name FROM upload_assets WHERE archived_at IS NULL ORDER BY created_at DESC')).rows;
+    const seen=new Set();const items=[];
+    for(const image of images){if(seen.has(image.public_url))continue;seen.add(image.public_url);items.push({id:image.id,imageId:image.id,localOptimizedPath:image.public_url,altText:image.alt_text,productName:image.display_name});}
+    for(const asset of assets){if(seen.has(asset.public_url))continue;seen.add(asset.public_url);items.push({id:asset.id,assetId:asset.id,localOptimizedPath:asset.public_url,altText:asset.original_name,productName:asset.original_name});}
+    res.json({items});
+  }));
+  app.post('/api/admin/products/:id/images/from-library',asyncRoute(async(req,res)=>{
+    if(typeof req.body.imageId!=='string'&&typeof req.body.assetId!=='string')throw Object.assign(new Error('Select a library image'),{status:400});
+    const id=makeId();
+    await transaction(db,async client=>{
+      if(!(await client.query('SELECT id FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rowCount)throw Object.assign(new Error('Product not found'),{status:404});
+      const source=req.body.assetId?(await client.query('SELECT id,storage_key,public_url,original_name AS alt_text FROM upload_assets WHERE id=$1 AND archived_at IS NULL',[req.body.assetId])).rows[0]:(await client.query('SELECT * FROM product_images WHERE id=$1 AND archived_at IS NULL',[req.body.imageId])).rows[0];
+      if(!source)throw Object.assign(new Error('Library image not found'),{status:404});
+      const position=Number((await client.query('SELECT COALESCE(MAX(sort_position),0)+1 position FROM product_images WHERE product_id=$1',[req.params.id])).rows[0].position);
+      await client.query('INSERT INTO product_images(id,product_id,storage_key,public_url,original_public_url,alt_text,sort_position,source_metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[id,req.params.id,source.storage_key,source.public_url,source.original_public_url||source.public_url,source.alt_text,position,JSON.stringify({sourceUrl:source.source_metadata?.sourceUrl||source.public_url,librarySourceImageId:source.id})]);
+    });
+    await audit(db,req.admin.user_id,'attach_library_image','product',req.params.id,{imageId:id});
+    res.status(201).json({id});
+  }));
   app.post("/api/admin/categories",asyncRoute(async(req,res)=>{
     if(typeof req.body.name!=="string")throw Object.assign(new Error("اسم الفئة مطلوب"),{status:400});
     const name=req.body.name.normalize('NFKC').trim().replace(/\s+/g,' ');
@@ -111,6 +181,19 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
     });
     await audit(db,req.admin.user_id,'create','category',category.id,{requestId:req.requestId});
     res.status(201).json(category);
+  }));
+  app.delete('/api/admin/categories/:id',asyncRoute(async(req,res)=>{
+    await transaction(db,async client=>{
+      await client.query('LOCK TABLE categories IN SHARE ROW EXCLUSIVE MODE');
+      const category=(await client.query('SELECT id,slug FROM categories WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+      if(!category)throw Object.assign(new Error('الفئة غير موجودة'),{status:404});
+      if(['women','kids','ملابس-رجالية'].includes(category.slug))throw Object.assign(new Error('لا يمكن حذف فئات النساء والرجال والأطفال الأساسية'),{status:409});
+      if((await client.query('SELECT product_id FROM product_categories WHERE category_id=$1 LIMIT 1',[category.id])).rowCount)
+        throw Object.assign(new Error('هذه الفئة مرتبطة بمنتجات. غيّر فئات تلك المنتجات واحفظها أولاً ثم أعد محاولة الحذف.'),{status:409});
+      await client.query('DELETE FROM categories WHERE id=$1',[category.id]);
+      await audit(client,req.admin.user_id,'delete_unused_category','category',category.id,{requestId:req.requestId});
+    });
+    res.status(204).end();
   }));
   app.post("/api/admin/products",asyncRoute(async(req,res)=>{ const input=parse(productSchema,req.body); const id=await saveProduct(db,input); await audit(db,req.admin.user_id,"create","product",id,{requestId:req.requestId}); res.status(201).json({id}); }));
   app.put("/api/admin/products/:id",asyncRoute(async(req,res)=>{ const input=parse(productSchema,req.body); const id=await saveProduct(db,input,req.params.id); await audit(db,req.admin.user_id,"update","product",id,{requestId:req.requestId}); res.json({id}); }));
@@ -157,7 +240,7 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
   app.put("/api/admin/banner-order",asyncRoute(async(req,res)=>{ const ids=req.body.orderedBannerIds; if(!Array.isArray(ids)||new Set(ids).size!==ids.length) throw Object.assign(new Error("Banner ordering must contain unique IDs"),{status:400}); await transaction(db,async(client)=>{ const existing=(await client.query("SELECT id FROM banners ORDER BY id")).rows.map(row=>row.id); if(existing.length!==ids.length||existing.some(id=>!ids.includes(id))) throw Object.assign(new Error("Banner ordering must include every banner exactly once"),{status:400}); await client.query("UPDATE banners SET sort_position=sort_position+100000"); for(let i=0;i<ids.length;i+=1) await client.query("UPDATE banners SET sort_position=$1,updated_at=now() WHERE id=$2",[i+1,ids[i]]); }); await audit(db,req.admin.user_id,"reorder","banners",null,{orderedBannerIds:ids,requestId:req.requestId}); res.status(204).end(); }));
   app.post("/api/admin/uploads",upload.single("image"),asyncRoute(async(req,res)=>{ if(!req.file) throw Object.assign(new Error("Image is required"),{status:400}); await finalizeImageUpload(req.file); const checksum=await sha256File(req.file.path); const asset=await recordUpload(db,config,req,req.file,checksum); req.keepUploadedFile=true; await audit(db,req.admin.user_id,"upload","asset",asset.id,{purpose:req.body.purpose||null,requestId:req.requestId}); res.status(201).json({id:asset.id,publicUrl:asset.publicUrl,checksum}); }));
 
-  app.get("/api/admin/orders",asyncRoute(async(req,res)=>res.json(await listAdminOrders(db,req.query))));
+  app.get("/api/admin/orders",asyncRoute(async(req,res)=>res.json(await listAdminOrders(db,req.query,{assignedTo:req.query.mine==='1'?req.admin.user_id:null,singleOrder:req.query.view==='confirmation'}))));
   app.get("/api/admin/orders/:id",asyncRoute(async(req,res)=>{
     const order=await getAdminOrder(db,req.params.id);
     const sheetSync=await sheetEventStatus(db,config,req.params.id);
@@ -171,6 +254,14 @@ export async function createApp({ db, config, fetchImpl=globalThis.fetch }) {
     const order=await createOrder(db,config,input,key,source,{manual:true});
     if(!order.replayed) await audit(db,req.admin.user_id,"create_manual_order","order",order.id,{source,requestId:req.requestId});
     res.status(order.replayed?200:201).json(order);
+  }));
+  app.patch('/api/admin/orders/:id/confirmation-outcome',asyncRoute(async(req,res)=>{
+    const outcome=req.body.outcome;
+    if((outcome!==null&&!confirmationOutcomes.some(item=>item.id===outcome))||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id))return res.status(400).json({error:'Invalid confirmation outcome'});
+    await transaction(db,async client=>{
+      if(!(await client.query('SELECT id FROM orders WHERE id=$1 FOR UPDATE',[req.params.id])).rowCount)throw Object.assign(new Error('Order not found'),{status:404});
+      await audit(client,req.admin.user_id,'confirmation_outcome','order',req.params.id,{outcome});
+    });res.json({saved:true,outcome});
   }));
   app.patch("/api/admin/orders/:id",asyncRoute(async(req,res)=>res.json(await changeOrderStatus(db,req.params.id,String(req.body.status||""),req.admin.user_id,req.requestId))));
   app.post("/api/admin/orders/:id/retry-sheet-sync",asyncRoute(async(req,res)=>{

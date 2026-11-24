@@ -74,6 +74,7 @@ export const productSchema = z.object({
 });
 
 export const orderSchema = z.object({
+  couponCode:z.string().trim().regex(/^[A-Za-z0-9_-]{1,40}$/).optional(),
   customer: z.object({
     name: z.string().trim().min(2).max(200), phone: z.string().trim().min(6).max(40),
     city: z.string().trim().min(2).max(200), address: z.string().trim().min(4).max(1000),

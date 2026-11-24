@@ -12,7 +12,9 @@ export function deriveProductStats(products, publicProducts) {
 export function filterOwnerProducts(products, query, status) {
   const normalized = query.trim().toLocaleLowerCase();
   return products.filter((product) => {
-    if (status !== "all" && product.status !== status) return false;
+    if (status === 'variable') {
+      if(product.status === 'archived' || !(product.variants?.length > 1)) return false;
+    } else if (status !== "all" && product.status !== status) return false;
     if (!normalized) return true;
     return [product.displayName, product.name, product.sku, product.slug]
       .some((value) => String(value || "").toLocaleLowerCase().includes(normalized));

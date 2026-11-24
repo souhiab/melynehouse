@@ -1,3 +1,4 @@
+import {couponDiscount} from './marketing.mjs';
 import crypto from "node:crypto";
 import { transaction } from "./db.mjs";
 import { creationEvent, sheetEventType } from "./sheet-event.mjs";
@@ -31,6 +32,7 @@ export function orderRequestHash(input, lines, source = "website") {
   // Keep the original website hash stable so retries of pre-migration orders still replay.
   const request = { customer: input.customer, note: input.note, items: lines };
   if (source !== "website") request.source = source;
+  if(input.couponCode)request.couponCode=input.couponCode.trim().toUpperCase();
   return crypto.createHash("sha256").update(JSON.stringify(request)).digest("hex");
 }
 
@@ -80,10 +82,12 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
     const id = crypto.randomUUID();
     const orderNumber = `MLY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
     const syncStatus = !manual && sheetDeliveryEnabled(config) ? "pending" : "disabled";
-    const total = (subtotalCents / 100).toFixed(2);
+    const discount=await couponDiscount(client,input.couponCode,subtotalCents);
+    const total = ((subtotalCents-discount.discountCents) / 100).toFixed(2);
     await client.query(`INSERT INTO orders(id,order_number,subtotal_mad,total_mad,customer,customer_note,sheet_sync_status,idempotency_key,request_hash,inventory_state,source,created_by_admin)
       VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,'reserved',$9,$10)`,
     [id, orderNumber, total, JSON.stringify(input.customer), input.note || null, syncStatus, idempotencyKey, requestHash, source, manual]);
+    if(discount.code)await client.query('UPDATE orders SET subtotal_mad=$1,discount_mad=$2,discount_code=$3 WHERE id=$4',[(subtotalCents/100).toFixed(2),(discount.discountCents/100).toFixed(2),discount.code,id]);
     const eventItems = [];
     for (const { line, variant, product, unitCents } of checked) {
       const itemId = crypto.randomUUID();
@@ -101,6 +105,7 @@ export async function createOrder(db, config, input, idempotencyKey, source = "w
       const createdAt = (await client.query("SELECT created_at FROM orders WHERE id=$1", [id])).rows[0].created_at;
       const payload = creationEvent({ eventId, orderId: id, orderNumber, createdAt: new Date(createdAt).toISOString(),
         source, customer: input.customer, note: input.note, totalMad: Number(total), items: eventItems });
+      if(discount.code){payload.order.subtotalMad=subtotalCents/100;payload.order.discountMad=discount.discountCents/100;payload.order.discountCode=discount.code;}
       await client.query("INSERT INTO order_sheet_outbox(id,order_id,event_type,schema_version,payload) VALUES($1,$2,$3,1,$4)",
         [eventId, id, sheetEventType, JSON.stringify(payload)]);
     }
@@ -130,6 +135,7 @@ export async function changeOrderStatus(db, orderId, nextStatus, adminUserId, re
       inventoryState = "restored";
     }
     await client.query("UPDATE orders SET status=$1,inventory_state=$2,updated_at=now() WHERE id=$3", [nextStatus, inventoryState, orderId]);
+    if(nextStatus==='confirmed')await client.query('UPDATE order_assignments SET confirmed_at=now(),confirmed_by=$1 WHERE order_id=$2 AND confirmed_at IS NULL',[adminUserId,orderId]);
     await client.query("INSERT INTO admin_audit_log(id,admin_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'status_change','order',$3,$4)",
       [crypto.randomUUID(), adminUserId, orderId, JSON.stringify({ from: order.status, to: nextStatus, inventoryState, requestId })]);
     return { id: orderId, status: nextStatus, unchanged: false };

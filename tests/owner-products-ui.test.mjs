@@ -15,8 +15,13 @@ test("owner child routes, parent destinations and planned navigation are explici
   assert.equal(ownerPathForTab("products"), "/owner/products");
   assert.equal(ownerTabFromPath("/owner/products/new"), "add-product");
   assert.equal(ownerTabFromPath("/owner"), "products");
+  assert.equal(ownerTabFromPath("/owner/store"), "store");
+  assert.equal(ownerTabFromPath("/owner/store/media"), "store-media");
+  assert.equal(ownerSectionForTab("store-media"), "store");
+  assert.equal(ownerPathForTab("store-pages"), "/owner/store/pages");
   const sections = ownerNavigation.flatMap((group) => group.sections || []);
-  assert.deepEqual(sections.map((section) => section.id), ["orders", "products"]);
+  assert.deepEqual(sections.map((section) => section.id), ["orders", "products", "marketing", "store"]);
+  assert.equal(sections.find(section=>section.id==='store').children.length,6);
   assert.equal(sections[0].path, "/owner/orders");
   assert.equal(sections[0].children[0].path, sections[0].path);
   assert.equal(sections[1].path, "/owner/products");

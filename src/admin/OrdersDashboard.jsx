@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {TeamRoleContext,canSetOrderStatus} from './team-access.js';
+import { useContext, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Copy, MagnifyingGlass, Plus, ShoppingBag, WhatsappLogo, X } from "@phosphor-icons/react";
 import storeData from "../../data/store.json";
 import { customerWhatsAppHref } from "./order-contact.js";
@@ -22,7 +23,7 @@ function CopyPhoneButton({ phone }) {
   return <><button type="button" className="owner-order-copy-phone" onClick={copy} disabled={!available} aria-label="نسخ رقم الهاتف" title="نسخ رقم الهاتف"><Copy size={16} aria-hidden="true" /></button>{feedback && <span className="owner-order-copy-feedback" role="status">{feedback}</span>}</>;
 }
 
-function PhoneContact({ order, publicProducts = [] }) {
+export function PhoneContact({ order, publicProducts = [] }) {
   const phone = order?.customer?.phone;
   const href = customerWhatsAppHref(order, publicProducts, storeData.domain);
   const openWhatsApp = (event) => {
@@ -32,7 +33,7 @@ function PhoneContact({ order, publicProducts = [] }) {
   return <span className="owner-order-phone"><b dir="ltr" title={customerField(order, "phone")}>{customerField(order, "phone")}</b><span className="owner-order-contact-actions"><CopyPhoneButton phone={phone} /><button type="button" className="owner-order-whatsapp-phone" onClick={openWhatsApp} disabled={!href} aria-label="تأكيد الطلب مع العميل عبر واتساب" title={href ? "تأكيد الطلب مع العميل عبر واتساب" : "رقم الهاتف غير صالح لواتساب"}><WhatsappLogo size={17} weight="fill" aria-hidden="true" /></button></span></span>;
 }
 
-function OrderThumbnail({ src }) {
+export function OrderThumbnail({ src }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
   return src && !failed ? <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
@@ -44,10 +45,11 @@ function StatusBadge({ status }) {
   return <span className={`owner-order-status tone-${tone}`}>{statusLabel(status)}</span>;
 }
 
-function StatusSelect({ order, busy, onChange }) {
+export function StatusSelect({ order, busy, onChange }) {
+  const role=useContext(TeamRoleContext);
   return <select className="owner-order-status-select" aria-label={`تغيير حالة الطلب ${order.order_number}`} value={order.status} disabled={busy || !ORDER_TRANSITIONS[order.status]?.length}
     onClick={(event) => event.stopPropagation()} onChange={(event) => onChange(order, event.target.value)}>
-    {ORDER_STATUSES.map((status) => <option key={status.id} value={status.id} disabled={status.id !== order.status && !ORDER_TRANSITIONS[order.status]?.includes(status.id)}>{status.label}</option>)}
+    {ORDER_STATUSES.map((status) => <option key={status.id} value={status.id} disabled={status.id !== order.status && (!ORDER_TRANSITIONS[order.status]?.includes(status.id)||!canSetOrderStatus(role,status.id))}>{status.label}</option>)}
   </select>;
 }
 
@@ -85,7 +87,7 @@ export function OrderDetail({ order, loading, error, onClose, onStatusChange, on
         <section className="owner-order-detail-section"><h3>الحالة</h3><div className="owner-order-detail-status"><StatusBadge status={order.status} /><StatusSelect order={order} busy={busy} onChange={onStatusChange} /></div></section>
         <section className="owner-order-detail-section"><h3>العميل</h3><dl className="owner-order-detail-grid"><div><dt>الاسم الكامل</dt><dd>{customerField(order, "name")}</dd></div><div><dt>رقم الهاتف</dt><dd><PhoneContact order={order} publicProducts={publicProducts} /></dd></div><div><dt>المدينة</dt><dd>{customerField(order, "city")}</dd></div><div><dt>العنوان</dt><dd>{customerField(order, "address")}</dd></div></dl></section>
         <section className="owner-order-detail-section"><h3>المنتجات ({order.items?.length || 0})</h3><div className="owner-order-detail-items">{(order.items || []).map((item, index) => <article key={index} className="owner-order-detail-item"><OrderThumbnail src={item.thumbnailUrl} /><div><strong>{productName(item)}</strong><small>المقاس: {selectionValue(item, "size") || "—"} · اللون: {selectionValue(item, "color") || "—"}</small><small>الكمية: {item.quantity} × {money(item.unitPriceMad)}</small></div><b>{money(lineTotal(item))}</b></article>)}</div>
-          <div className="owner-order-totals"><div><span>المجموع الفرعي المحفوظ</span><strong>{money(order.subtotal_mad)}</strong></div><div className="final"><span>الإجمالي المحفوظ</span><strong>{money(order.total_mad)}</strong></div></div></section>
+          <div className="owner-order-totals"><div><span>المجموع الفرعي المحفوظ</span><strong>{money(order.subtotal_mad)}</strong></div>{Number(order.discount_mad)>0&&<div><span>الخصم <bdi>{order.discount_code}</bdi></span><strong>?{money(order.discount_mad)}</strong></div>}<div className="final"><span>الإجمالي المحفوظ</span><strong>{money(order.total_mad)}</strong></div></div></section>
         {order.customer_note && <section className="owner-order-detail-section"><h3>ملاحظات الطلب</h3><p className="owner-order-note">{order.customer_note}</p></section>}
         <section className="owner-order-detail-section"><h3>سجل الحالة</h3>{order.statusHistory?.length ? <ol className="owner-order-history">{order.statusHistory.map((entry, index) => <li key={index}><strong>من {statusLabel(entry.from)} إلى {statusLabel(entry.to)}</strong><small>{formatDate(entry.createdAt)}</small></li>)}</ol> : <p className="owner-order-muted">لا توجد تغييرات حالة مسجلة لهذا الطلب.</p>}</section>
         <div className="owner-order-sync"><div><span>نسخة Google Sheet: {({pending:'بانتظار المزامنة',retrying:'جارٍ الإرسال أو إعادة المحاولة',delivered:'تم التسليم بإقرار موثّق',failed:'فشلت المزامنة',disabled:'معطلة / غير مهيأة'})[order.sheetSync?.state] || 'لم يُتحقق من التسليم'}</span>{order.sheetSync?.attempt_count > 0 && <small> · المحاولات: {order.sheetSync.attempt_count}</small>}{order.sheetSync?.last_error && <small dir="ltr"> · {order.sheetSync.last_error}</small>}{order.sheetSync?.next_attempt_at && order.sheetSync.state === 'retrying' && order.sheetSync.queueState === 'pending' && <small> · المحاولة التالية: {formatDate(order.sheetSync.next_attempt_at)}</small>}{order.sheetSync?.delivered_at && <small> · {formatDate(order.sheetSync.delivered_at)}</small>}{order.sheetSync?.delivery_receipt && <small dir="ltr"> · {order.sheetSync.delivery_receipt.receiptId}</small>}</div>{order.sheetSync?.canRetry && <button type="button" className="quiet" disabled={busy} onClick={() => onRetrySheet(order)}>إعادة المحاولة</button>}</div>

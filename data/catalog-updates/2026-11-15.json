@@ -1,0 +1,562 @@
+{
+  "schemaVersion": 1,
+  "extractedAt": "2026-11-15T19:09:20.750Z",
+  "source": "https://melynehouse.com",
+  "currency": "MAD",
+  "products": [
+    {
+      "id": "6a9227d7ab8f19f0a234af25",
+      "sku": "P35",
+      "slug": "---طقم-للبنات-موضة-2026---",
+      "canonicalUrl": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-2026---",
+      "sourceUrl": "https://melynehouse.com/products/---%D8%B7%D9%82%D9%85-%D9%84%D9%84%D8%A8%D9%86%D8%A7%D8%AA-%D9%85%D9%88%D8%B6%D8%A9-2026---",
+      "name": "🐼 طقم للبنات موضة 2026 🐼",
+      "displayName": "طقم للبنات موضة 2026",
+      "descriptionHtml": null,
+      "description": null,
+      "categories": [
+        {
+          "id": "665330a6e820480079b69ab5",
+          "name": "ملابس الأطفال",
+          "slug": "kids",
+          "url": "https://melynehouse.com/shop/kids"
+        }
+      ],
+      "price": {
+        "current": 249.98,
+        "comparison": 379.98,
+        "currency": "MAD"
+      },
+      "options": [
+        {
+          "id": "6a9227d7ab8f19f0a234af26",
+          "name": "Color",
+          "key": null,
+          "values": [
+            {
+              "id": "6a9227d7ab8f19f0a234af2b",
+              "label": "P35 Black",
+              "secondaryLabel": "#cccccc"
+            },
+            {
+              "id": "6a9227d7ab8f19f0a234af46",
+              "label": "P35 Marron",
+              "secondaryLabel": "#cccccc"
+            },
+            {
+              "id": "6a9227d7ab8f19f0a234af54",
+              "label": "P35 Gray",
+              "secondaryLabel": "#cccccc"
+            }
+          ]
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af27",
+          "name": "Size",
+          "key": "size",
+          "values": [
+            {
+              "id": "6a9227d7ab8f19f0a234af34",
+              "label": "5-6 ans",
+              "secondaryLabel": "5-6 ans"
+            },
+            {
+              "id": "6a9227d7ab8f19f0a234af38",
+              "label": "7-8 ans",
+              "secondaryLabel": "7-8 ans"
+            },
+            {
+              "id": "6a9227d7ab8f19f0a234af3c",
+              "label": "9-10 ans",
+              "secondaryLabel": "9-10 ans"
+            },
+            {
+              "id": "6a9227d7ab8f19f0a234af40",
+              "label": "11-12 ans",
+              "secondaryLabel": "11-12 ans"
+            },
+            {
+              "id": "6a9227d7ab8f19f0a234af44",
+              "label": "13-14 ans",
+              "secondaryLabel": "13-14 ans"
+            }
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "id": "6a9227d7ab8f19f0a234af35",
+          "name": "Color : P35 Black | Size : 5-6 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Black"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "5-6 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bbab8f19f0a234aeda"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af39",
+          "name": "Color : P35 Black | Size : 7-8 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Black"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "7-8 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bbab8f19f0a234aeda"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af3d",
+          "name": "Color : P35 Black | Size : 9-10 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Black"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "9-10 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bbab8f19f0a234aeda"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af41",
+          "name": "Color : P35 Black | Size : 11-12 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Black"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "11-12 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bbab8f19f0a234aeda"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af45",
+          "name": "Color : P35 Black | Size : 13-14 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Black"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "13-14 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bbab8f19f0a234aeda"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af4b",
+          "name": "Color : P35 Marron | Size : 5-6 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Marron"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "5-6 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6ae13ba9f68c13ee37518515"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af4d",
+          "name": "Color : P35 Marron | Size : 7-8 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Marron"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "7-8 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6ae13ba9f68c13ee37518515"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af4f",
+          "name": "Color : P35 Marron | Size : 9-10 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Marron"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "9-10 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6ae13ba9f68c13ee37518515"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af51",
+          "name": "Color : P35 Marron | Size : 11-12 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Marron"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "11-12 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6ae13ba9f68c13ee37518515"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af53",
+          "name": "Color : P35 Marron | Size : 13-14 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Marron"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "13-14 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6ae13ba9f68c13ee37518515"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af59",
+          "name": "Color : P35 Gray | Size : 5-6 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Gray"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "5-6 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 0,
+          "explicitlyUnavailable": false,
+          "availability": "unavailable",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bdcbb6c72010e0080c"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af5b",
+          "name": "Color : P35 Gray | Size : 7-8 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Gray"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "7-8 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bdcbb6c72010e0080c"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af5d",
+          "name": "Color : P35 Gray | Size : 9-10 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Gray"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "9-10 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bdcbb6c72010e0080c"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af5f",
+          "name": "Color : P35 Gray | Size : 11-12 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Gray"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "11-12 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bdcbb6c72010e0080c"
+        },
+        {
+          "id": "6a9227d7ab8f19f0a234af61",
+          "name": "Color : P35 Gray | Size : 13-14 ans",
+          "selections": [
+            {
+              "option": "Color",
+              "optionKey": null,
+              "value": "P35 Gray"
+            },
+            {
+              "option": "Size",
+              "optionKey": "size",
+              "value": "13-14 ans"
+            }
+          ],
+          "price": {
+            "current": 249.98,
+            "comparison": 379.98,
+            "currency": "MAD"
+          },
+          "stockQuantity": 10000,
+          "explicitlyUnavailable": false,
+          "availability": "available",
+          "availabilitySource": "public variant quantity and unavailable fields",
+          "imageId": "6a9226bdcbb6c72010e0080c"
+        }
+      ],
+      "availability": "available",
+      "availabilitySource": "derived only from public variant-level stock",
+      "images": [
+        {
+          "id": "6a9226bbab8f19f0a234aeda",
+          "title": "WhatsApp Image 2026-08-27 at 22.25.53 (2)",
+          "sourceUrl": "https://storeno.b-cdn.net/stores/8-2026/1787963067716.jpeg",
+          "variantIds": [
+            "6a9227d7ab8f19f0a234af35",
+            "6a9227d7ab8f19f0a234af39",
+            "6a9227d7ab8f19f0a234af3d",
+            "6a9227d7ab8f19f0a234af41",
+            "6a9227d7ab8f19f0a234af45"
+          ],
+          "order": 1,
+          "localOriginalPath": "/images/products/6a9227d7ab8f19f0a234af25/original-01.jpeg",
+          "originalBytes": 433960,
+          "localOptimizedPath": "/images/products/6a9227d7ab8f19f0a234af25/web-01.jpeg",
+          "optimizedBytes": 111340
+        },
+        {
+          "id": "6a9226bdcbb6c72010e0080c",
+          "title": "WhatsApp Image 2026-08-27 at 22.25.53",
+          "sourceUrl": "https://storeno.b-cdn.net/stores/8-2026/1787963069166.jpeg",
+          "variantIds": [
+            "6a9227d7ab8f19f0a234af59",
+            "6a9227d7ab8f19f0a234af5b",
+            "6a9227d7ab8f19f0a234af5d",
+            "6a9227d7ab8f19f0a234af5f",
+            "6a9227d7ab8f19f0a234af61"
+          ],
+          "order": 2,
+          "localOriginalPath": "/images/products/6a9227d7ab8f19f0a234af25/original-02.jpeg",
+          "originalBytes": 454253,
+          "localOptimizedPath": "/images/products/6a9227d7ab8f19f0a234af25/web-02.jpeg",
+          "optimizedBytes": 116920
+        },
+        {
+          "id": "6ae13ba9f68c13ee37518515",
+          "title": "WhatsApp Image 2026-10-01 at 17.03.06",
+          "sourceUrl": "https://storeno.b-cdn.net/stores/10-2026/1793145769329.jpeg",
+          "variantIds": [
+            "6a9227d7ab8f19f0a234af4b",
+            "6a9227d7ab8f19f0a234af4d",
+            "6a9227d7ab8f19f0a234af4f",
+            "6a9227d7ab8f19f0a234af51",
+            "6a9227d7ab8f19f0a234af53"
+          ],
+          "order": 3,
+          "localOriginalPath": "/images/products/6a9227d7ab8f19f0a234af25/original-03.jpeg",
+          "originalBytes": 159780,
+          "localOptimizedPath": "/images/products/6a9227d7ab8f19f0a234af25/web-03.jpeg",
+          "optimizedBytes": 91296
+        }
+      ],
+      "brand": null,
+      "tags": [
+        "clothes"
+      ],
+      "productType": "PHYSICAL",
+      "freeShipping": false,
+      "shipping": {
+        "active": false,
+        "price": 0,
+        "zones": []
+      },
+      "seo": {
+        "hide": true,
+        "keywords": [],
+        "description": "",
+        "title": "🐼 طقم للبنات موضة 2026 🐼"
+      },
+      "createdAt": null,
+      "updatedAt": null,
+      "extractedAt": "2026-11-15T19:09:20.750Z",
+      "source": "melynehouse.com public storefront",
+      "sourceBasePrice": {
+        "current": 219.98,
+        "comparison": 379.98,
+        "currency": "MAD"
+      },
+      "priceSource": "lowest available public variant price"
+    }
+  ]
+}

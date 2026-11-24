@@ -8,7 +8,12 @@ const groups=[
  ['#ADD8E6','Light Blue','Bleu Clair','أزرق فاتح'],['#006400','Dark Green','Vert Foncé','أخضر داكن'],
  ['#D3D3D3','Light Grey','Light Gray','Gris Clair'],['#C0C0C0','Silver','Argent','فضي'],['#FFD700','Gold','Doré','ذهبي']
 ];
-export const colorNames=groups.flatMap(([, ...aliases])=>aliases);
+export const colorSuggestionsByLanguage=[
+ {language:'English',names:['Black','White','Red','Green','Blue','Yellow','Orange','Pink','Purple','Brown','Grey','Gray','Beige','Burgundy','Navy','Navy Blue','Blue Marine','Light Blue','Dark Green','Light Grey','Light Gray','Silver','Gold']},
+ {language:'Français',names:['Noir','Blanc','Rouge','Vert','Bleu','Jaune','Orange','Rose','Violet','Marron','Gris','Beige','Bordeaux','Bleu Marine','Bleu Clair','Vert Foncé','Gris Clair','Argent','Doré']},
+ {language:'العربية',names:['أسود','أبيض','أحمر','أخضر','أزرق','أصفر','برتقالي','وردي','بنفسجي','بني','رمادي','بيج','عنابي','كحلي','أزرق فاتح','أخضر داكن','فضي','ذهبي']}
+].map(group=>({...group,names:[...group.names].sort((a,b)=>a.localeCompare(b,group.language==='العربية'?'ar':group.language==='Français'?'fr':'en'))}));
+export const colorNames=[...new Set(colorSuggestionsByLanguage.flatMap(group=>group.names))];
 const colors=new Map(groups.flatMap(([hex,...aliases])=>aliases.map(alias=>[normalizeValue(alias),hex])));
 export const validHex=value=>/^#[\da-f]{6}$/i.test(value||'');
 export function recognizedColor(label){
